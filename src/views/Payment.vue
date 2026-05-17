@@ -102,7 +102,19 @@
                 </div>
               </div>
 
-              <div v-else class="theme-surface-soft border rounded-2xl p-6">
+              <div v-else-if="isJSAPIMode" class="theme-surface-soft border rounded-2xl p-6">
+                <div class="text-sm theme-text-muted mb-3">{{ paymentGuideTitle }}</div>
+                <button
+                  type="button"
+                  @click="handleInvokeWechatJSAPI"
+                  class="theme-btn-inline-md border theme-btn-secondary font-semibold"
+                  :disabled="!jsapiParams">
+                  {{ t('payment.openWechatPay') }}
+                </button>
+                <div class="mt-3 text-xs theme-text-muted">{{ paymentGuideTip }}</div>
+              </div>
+
+              <div v-else-if="showPayLink" class="theme-surface-soft border rounded-2xl p-6">
                 <div class="text-sm theme-text-muted mb-3">{{ t('payment.openPayLink') }}</div>
                 <button
                   type="button"
@@ -418,6 +430,19 @@
                 {{ t('payment.payLinkLabel') }}：{{ paymentResult.pay_url }}
               </div>
             </div>
+
+            <div v-if="isJSAPIMode" class="mt-6 flex flex-col md:flex-row md:items-center gap-3">
+              <button
+                type="button"
+                @click="handleInvokeWechatJSAPI"
+                class="theme-btn-inline-md border theme-btn-secondary font-semibold text-center"
+                :disabled="!jsapiParams">
+                {{ t('payment.openWechatPay') }}
+              </button>
+              <div class="text-xs theme-text-muted">
+                {{ paymentGuideTip }}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -486,6 +511,7 @@ import { debounceAsync } from '../utils/debounce'
 import { copyText } from '../utils/clipboard'
 import { amountToCents, basisPointsToPercent, calculateFeeCents, centsToAmount, rateToBasisPoints } from '../utils/money'
 import { buildSkuDisplayTextFromSnapshot } from '../utils/sku'
+import { invokeWechatJSAPIPay, resolveWechatOpenID, type WechatJSAPIParams } from '../utils/wechatPay'
 import PaymentAmountBreakdown from '../components/payment/PaymentAmountBreakdown.vue'
 import PaymentChannelSelector from '../components/payment/PaymentChannelSelector.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -643,15 +669,39 @@ const interactionLabel = computed(() => {
   const mode = String(paymentResult.value.interaction_mode).toLowerCase()
   if (mode === 'qr') return t('payment.modeQr')
   if (mode === 'redirect') return t('payment.modeRedirect')
+  if (mode === 'jsapi') return t('payment.modeJsapi')
   return mode
 })
 
 const interactionMode = computed(() => String(paymentResult.value?.interaction_mode || '').toLowerCase())
-const paymentResultTitle = computed(() => interactionMode.value === 'redirect' ? t('payment.resultRedirectTitle') : t('payment.resultTitle'))
-const paymentGuideTitle = computed(() => interactionMode.value === 'redirect' ? t('payment.redirectTitle') : t('payment.qrTitle'))
-const paymentGuideTip = computed(() => interactionMode.value === 'redirect' ? t('payment.redirectTip') : t('payment.qrTip'))
+const isJSAPIMode = computed(() => interactionMode.value === 'jsapi')
+const jsapiParams = computed<WechatJSAPIParams | null>(() => {
+  const raw = paymentResult.value?.jsapi_params
+  if (!raw || typeof raw !== 'object') return null
+  const params = raw as Record<string, string>
+  if (!params.appId || !params.timeStamp || !params.nonceStr || !params.package || !params.signType || !params.paySign) {
+    return null
+  }
+  return params as unknown as WechatJSAPIParams
+})
+const paymentResultTitle = computed(() => {
+  if (interactionMode.value === 'redirect') return t('payment.resultRedirectTitle')
+  if (isJSAPIMode.value) return t('payment.jsapiTitle')
+  return t('payment.resultTitle')
+})
+const paymentGuideTitle = computed(() => {
+  if (interactionMode.value === 'redirect') return t('payment.redirectTitle')
+  if (isJSAPIMode.value) return t('payment.jsapiTitle')
+  return t('payment.qrTitle')
+})
+const paymentGuideTip = computed(() => {
+  if (interactionMode.value === 'redirect') return t('payment.redirectTip')
+  if (isJSAPIMode.value) return t('payment.jsapiTip')
+  return t('payment.qrTip')
+})
 
 const showPayLink = computed(() => {
+  if (isJSAPIMode.value) return false
   return interactionMode.value === 'redirect' || Boolean(payLink.value)
 })
 const isTelegramMiniApp = computed(() => telegramMiniAppStore.isMiniApp && telegramMiniAppStore.isReady)
@@ -1125,6 +1175,21 @@ const handleOpenPayLink = () => {
   openPayLinkInCompatibleWindow()
 }
 
+const handleInvokeWechatJSAPI = async () => {
+  error.value = ''
+  if (!jsapiParams.value) {
+    error.value = t('payment.jsapiParamsMissing')
+    return
+  }
+  try {
+    await invokeWechatJSAPIPay(jsapiParams.value)
+    await debouncedLoadOrder({ silent: true })
+    startPolling()
+  } catch (err: any) {
+    error.value = err?.message || t('payment.jsapiFailed')
+  }
+}
+
 const loadLatestPayment = async () => {
   if (!order.value || order.value.status !== 'pending_payment') return
   if (paymentResult.value) return
@@ -1142,7 +1207,7 @@ const loadLatestPayment = async () => {
       response = await paymentAPI.latest({ order_no: orderNoResolved.value })
     }
     const data = response.data.data
-    if (data && (data.pay_url || data.qr_code)) {
+    if (data && (data.pay_url || data.qr_code || data.jsapi_params)) {
       cachedPayment.value = data
       paymentResult.value = data
       selectedChannelId.value = data.channel_id || null
@@ -1152,6 +1217,8 @@ const loadLatestPayment = async () => {
       const mode = String(data.interaction_mode || '').toLowerCase()
       if (mode === 'redirect' && data.pay_url) {
         openPayLinkInCompatibleWindow()
+      } else if (mode === 'jsapi' && data.jsapi_params) {
+        void handleInvokeWechatJSAPI()
       }
     }
   } catch (err) {
@@ -1324,6 +1391,17 @@ const performPayment = async () => {
     startPolling()
     startCountdown()
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (isJSAPIMode.value) {
+      void handleInvokeWechatJSAPI()
+    }
+    return
+  }
+  const selectedMode = String(selectedChannel.value?.interaction_mode || '').toLowerCase()
+  const selectedOpenID = selectedMode === 'jsapi'
+    ? resolveWechatOpenID(route.query as Record<string, unknown>)
+    : ''
+  if (requiresOnlineChannel.value && selectedMode === 'jsapi' && !selectedOpenID) {
+    error.value = t('payment.wechatOpenIDRequired')
     return
   }
   submitting.value = true
@@ -1338,9 +1416,10 @@ const performPayment = async () => {
         order_password: guestAuth.value.order_password,
         order_no: orderNoResolved.value,
         channel_id: selectedChannelId.value,
+        openid: selectedOpenID || undefined,
       })
       paymentResult.value = response.data.data
-      if (paymentResult.value?.pay_url || paymentResult.value?.qr_code) {
+      if (paymentResult.value?.pay_url || paymentResult.value?.qr_code || paymentResult.value?.jsapi_params) {
         cachedPayment.value = paymentResult.value
       }
       openedPayWindow.value = false
@@ -1352,6 +1431,9 @@ const performPayment = async () => {
       }
       if (requiresOnlineChannel.value && selectedChannelId.value) {
         payload.channel_id = selectedChannelId.value
+      }
+      if (selectedOpenID) {
+        payload.openid = selectedOpenID
       }
       const response = await paymentAPI.create(payload)
       const created = response.data.data || {}
@@ -1370,7 +1452,7 @@ const performPayment = async () => {
         return
       }
       paymentResult.value = created
-      if (paymentResult.value?.pay_url || paymentResult.value?.qr_code) {
+      if (paymentResult.value?.pay_url || paymentResult.value?.qr_code || paymentResult.value?.jsapi_params) {
         cachedPayment.value = paymentResult.value
       }
       openedPayWindow.value = false
@@ -1381,6 +1463,8 @@ const performPayment = async () => {
     const mode = String(paymentResult.value?.interaction_mode || '').toLowerCase()
     if (mode === 'redirect' && payLink.value) {
       openPayLinkInCompatibleWindow()
+    } else if (mode === 'jsapi') {
+      void handleInvokeWechatJSAPI()
     }
   } catch (err: any) {
     error.value = err.message || t('payment.createFailed')
@@ -1544,6 +1628,7 @@ const formatChannelFixedFee = (channel?: any) => {
 }
 
 onMounted(() => {
+  resolveWechatOpenID(route.query as Record<string, unknown>)
   if (isRechargeReturn.value && rechargeNoQuery.value) {
     void redirectToWalletRecharge()
     return

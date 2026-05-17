@@ -45,6 +45,7 @@ import { walletAPI } from '../../api'
 import { useAppStore } from '../../stores/app'
 import type { PageAlert } from '../../utils/alerts'
 import { amountToCents, basisPointsToPercent, calculateFeeCents, centsToAmount, rateToBasisPoints } from '../../utils/money'
+import { resolveWechatOpenID } from '../../utils/wechatPay'
 import WalletBalanceCard from '../../components/wallet/WalletBalanceCard.vue'
 import WalletRechargeForm from '../../components/wallet/WalletRechargeForm.vue'
 import WalletTransactionList from '../../components/wallet/WalletTransactionList.vue'
@@ -141,7 +142,9 @@ const isChannelAllowedByConfig = (channel: any, allowedIdSet: Set<number> | null
 const mapChannel = (channel: any) => ({
   id: Number(channel.id),
   name: String(channel.name || channel.channel_type || channel.id),
+  provider_type: String(channel.provider_type || ''),
   channel_type: String(channel.channel_type || ''),
+  interaction_mode: String(channel.interaction_mode || ''),
   fee_rate: String(channel.fee_rate ?? '0'),
   fixed_fee: String(channel.fixed_fee ?? '0'),
   min_amount: String(channel.min_amount ?? '0'),
@@ -326,6 +329,9 @@ const handleRecharge = async () => {
       amount,
       channel_id: rechargeForm.channelId,
       remark: rechargeForm.remark.trim() || undefined,
+      openid: String(selectedChannel.value?.interaction_mode || '').toLowerCase() === 'jsapi'
+        ? resolveWechatOpenID(route.query as Record<string, unknown>) || undefined
+        : undefined,
     })
     const payload = response.data.data || {}
     const rechargeNo = payload?.recharge?.recharge_no || payload?.recharge_no || ''

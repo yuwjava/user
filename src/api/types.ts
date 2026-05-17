@@ -99,6 +99,7 @@ export interface WalletRechargePayload {
     channel_id: number
     currency?: string
     remark?: string
+    openid?: string
 }
 
 export interface WalletRechargeOrderData {
@@ -125,6 +126,7 @@ export interface WalletRechargeResult {
     interaction_mode?: string
     pay_url?: string
     qr_code?: string
+    jsapi_params?: Record<string, string>
     expires_at?: string
     status?: string
 }
@@ -188,6 +190,7 @@ export interface CreatePaymentPayload {
     order_no: string
     channel_id?: number
     use_balance?: boolean
+    openid?: string
 }
 
 export interface PaymentCreateResult {
@@ -202,6 +205,7 @@ export interface PaymentCreateResult {
     interaction_mode?: string
     pay_url?: string
     qr_code?: string
+    jsapi_params?: Record<string, string>
     expires_at?: string
 }
 

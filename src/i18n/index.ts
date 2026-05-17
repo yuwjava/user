@@ -1,4 +1,4 @@
-import { createI18n } from 'vue-i18n'
+﻿import { createI18n } from 'vue-i18n'
 
 // 语言包
 const messages = {
@@ -840,6 +840,13 @@ const messages = {
             },
             modeQr: '二维码支付',
             modeRedirect: '跳转支付',
+            modeJsapi: '微信 JSAPI 支付',
+            jsapiTitle: '微信支付',
+            jsapiTip: '请在微信内完成支付，如未弹出请点击按钮重新调起。',
+            openWechatPay: '打开微信支付',
+            wechatOpenIDRequired: '当前微信 JSAPI 支付缺少 openid，请从微信授权入口重新进入。',
+            jsapiParamsMissing: '微信支付参数缺失，请重新下单。',
+            jsapiFailed: '微信支付未完成，请重试。',
             payLinkLabel: '跳转链接',
             openPayLink: '打开支付链接',
             copyPayLink: '复制支付链接',
@@ -1968,6 +1975,13 @@ const messages = {
             },
             modeQr: '二維碼支付',
             modeRedirect: '跳轉支付',
+            modeJsapi: '微信 JSAPI 支付',
+            jsapiTitle: '微信支付',
+            jsapiTip: '請在微信內完成支付，如未彈出請點擊按鈕重新調起。',
+            openWechatPay: '打開微信支付',
+            wechatOpenIDRequired: '當前微信 JSAPI 支付缺少 openid，請從微信授權入口重新進入。',
+            jsapiParamsMissing: '微信支付參數缺失，請重新下單。',
+            jsapiFailed: '微信支付未完成，請重試。',
             payLinkLabel: '跳轉連結',
             openPayLink: '開啟支付連結',
             copyPayLink: '複製支付連結',
@@ -3055,6 +3069,13 @@ const messages = {
             },
             modeQr: 'QR payment',
             modeRedirect: 'Redirect payment',
+            modeJsapi: 'WeChat JSAPI payment',
+            jsapiTitle: 'WeChat Pay',
+            jsapiTip: 'Complete payment in WeChat. Tap the button again if the payment sheet does not open.',
+            openWechatPay: 'Open WeChat Pay',
+            wechatOpenIDRequired: 'Missing openid for WeChat JSAPI payment. Please re-enter from the WeChat authorization flow.',
+            jsapiParamsMissing: 'Missing WeChat payment parameters. Please create a new payment.',
+            jsapiFailed: 'WeChat payment was not completed. Please try again.',
             payLinkLabel: 'Pay link',
             openPayLink: 'Open payment link',
             copyPayLink: 'Copy pay link',

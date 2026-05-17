@@ -109,6 +109,15 @@
             <div class="rounded-xl border theme-surface-soft p-4">
               <div class="mt-4 flex flex-wrap items-center gap-3">
                 <button
+                  v-if="isJSAPIMode"
+                  type="button"
+                  @click="handleInvokeWechatJSAPI"
+                  class="inline-flex items-center rounded-lg border theme-btn-secondary px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="!jsapiParams"
+                >
+                  {{ t('payment.openWechatPay') }}
+                </button>
+                <button
                   v-if="payLink"
                   type="button"
                   @click="handleOpenPayLink"
@@ -151,6 +160,7 @@ import { useI18n } from 'vue-i18n'
 import { walletAPI } from '../api/wallet'
 import { useTelegramMiniAppStore } from '../stores/telegramMiniApp'
 import { basisPointsToPercent, rateToBasisPoints } from '../utils/money'
+import { invokeWechatJSAPIPay, type WechatJSAPIParams } from '../utils/wechatPay'
 import QRCode from 'qrcode'
 
 const { t } = useI18n()
@@ -174,18 +184,29 @@ const isPending = computed(() => {
 
 const payLink = computed(() => String(payment.value?.pay_url || '').trim())
 const interactionMode = computed(() => String(payment.value?.interaction_mode || '').toLowerCase())
+const isJSAPIMode = computed(() => interactionMode.value === 'jsapi')
+const jsapiParams = computed<WechatJSAPIParams | null>(() => {
+  const raw = payment.value?.jsapi_params
+  if (!raw || typeof raw !== 'object') return null
+  const params = raw as Record<string, string>
+  if (!params.appId || !params.timeStamp || !params.nonceStr || !params.package || !params.signType || !params.paySign) {
+    return null
+  }
+  return params as unknown as WechatJSAPIParams
+})
 const isTelegramMiniApp = computed(() => telegramMiniAppStore.isMiniApp && telegramMiniAppStore.isReady)
 const showTelegramPayHint = computed(() => isTelegramMiniApp.value && Boolean(payLink.value))
 
 const qrCodeContent = computed(() => String(payment.value?.qr_code || '').trim())
 const qrFallbackContent = computed(() => {
+  if (isJSAPIMode.value) return ''
   if (interactionMode.value === 'redirect') return ''
   if (qrCodeContent.value) return ''
   return payLink.value
 })
 const qrDisplayContent = computed(() => qrCodeContent.value || qrFallbackContent.value)
 const qrUsingPayLinkFallback = computed(() => Boolean(!qrCodeContent.value && qrFallbackContent.value))
-const showQRCode = computed(() => interactionMode.value !== 'redirect' && Boolean(qrImageUrl.value))
+const showQRCode = computed(() => !isJSAPIMode.value && interactionMode.value !== 'redirect' && Boolean(qrImageUrl.value))
 
 const feeRateDisplay = computed(() => {
   const rate = rateToBasisPoints(recharge.value?.fee_rate ?? payment.value?.fee_rate)
@@ -230,6 +251,7 @@ const syncPayload = (payload: any) => {
     interaction_mode: payload.interaction_mode,
     pay_url: payload.pay_url,
     qr_code: payload.qr_code,
+    jsapi_params: payload.jsapi_params,
     expires_at: payload.expires_at,
     status: payload.status,
   } : undefined)
@@ -285,6 +307,17 @@ const checkPayment = async () => {
     console.error('Failed to check payment:', err)
   } finally {
     checkingPayment.value = false
+  }
+}
+
+const handleInvokeWechatJSAPI = async () => {
+  if (!jsapiParams.value) return
+  try {
+    await invokeWechatJSAPIPay(jsapiParams.value)
+    await refreshStatus(true)
+    startPolling()
+  } catch (err: any) {
+    console.error('Failed to invoke WeChat JSAPI payment:', err)
   }
 }
 
@@ -355,6 +388,8 @@ onMounted(async () => {
     // Auto-redirect for redirect mode
     if (payLink.value && interactionMode.value === 'redirect') {
       handleOpenPayLink()
+    } else if (isJSAPIMode.value && jsapiParams.value) {
+      void handleInvokeWechatJSAPI()
     }
   }
 })
