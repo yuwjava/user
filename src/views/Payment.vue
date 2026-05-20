@@ -1401,7 +1401,13 @@ const performPayment = async () => {
     ? resolveWechatOpenID(route.query as Record<string, unknown>)
     : ''
   if (requiresOnlineChannel.value && selectedMode === 'jsapi' && !selectedOpenID) {
-    error.value = t('payment.wechatOpenIDRequired')
+    const redirectUri = encodeURIComponent(window.location.href)
+    let apiBaseUrl = appStore.config.api_base_url || ''
+    if (apiBaseUrl && apiBaseUrl.endsWith('/')) {
+      apiBaseUrl = apiBaseUrl.slice(0, -1)
+    }
+    const authUrl = `${apiBaseUrl}/api/v1/public/payment/wechat/oauth2/authorize?channel_id=${selectedChannelId.value}&redirect_uri=${redirectUri}`
+    window.location.href = authUrl
     return
   }
   submitting.value = true
