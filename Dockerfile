@@ -3,7 +3,7 @@ FROM docker.m.daocloud.io/library/node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --include=dev
+RUN npm config set registry https://registry.npmmirror.com && npm ci --include=dev
 
 COPY . .
 
