@@ -554,6 +554,7 @@ const useBalance = ref(false)
 const orderPaymentChannels = ref<any[]>([])
 const orderPaymentChannelsLoaded = ref(false)
 const orderPaymentChannelsRequestId = ref(0)
+const autoPayAttempted = ref(false)
 
 const routeQueryValueToString = (value: unknown): string => {
   if (Array.isArray(value)) {
@@ -1635,6 +1636,10 @@ const formatChannelFixedFee = (channel?: any) => {
 
 onMounted(() => {
   resolveWechatOpenID(route.query as Record<string, unknown>)
+  const queryChannelId = Number(readRouteQueryValue('channel_id'))
+  if (Number.isFinite(queryChannelId) && queryChannelId > 0) {
+    selectedChannelId.value = queryChannelId
+  }
   if (isRechargeReturn.value && rechargeNoQuery.value) {
     void redirectToWalletRecharge()
     return
@@ -1698,12 +1703,34 @@ watch(
   () => [channels.value, expectedOnlinePayCents.value, requiresOnlineChannel.value],
   () => {
     if (!selectedChannelId.value) return
+    if (channels.value.length === 0) return
     const selected = findChannelByID(selectedChannelId.value)
     if (!selected || isChannelDisabledForAmount(selected)) {
       selectedChannelId.value = null
     }
   },
   { deep: true }
+)
+
+watch(
+  () => [order.value, channels.value, selectedChannelId.value],
+  () => {
+    if (autoPayAttempted.value) return
+    if (!order.value || order.value.status !== 'pending_payment') return
+    if (channels.value.length === 0) return
+    if (!selectedChannelId.value) return
+
+    const selected = findChannelByID(selectedChannelId.value)
+    if (!selected) return
+
+    const selectedMode = String(selected?.interaction_mode || '').toLowerCase()
+    if (selectedMode !== 'jsapi') return
+
+    // Trigger auto payment
+    autoPayAttempted.value = true
+    void handlePayment()
+  },
+  { deep: true, immediate: true }
 )
 
 watch(expiresAtMs, (value) => {

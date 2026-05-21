@@ -1136,9 +1136,16 @@ const handleSubmit = async () => {
     clearSourceStore()
 
     // Redirect to the existing Payment page which handles all payment display
-    const query = userAuthStore.isAuthenticated
-      ? `order_no=${encodeURIComponent(responseData.order_no)}`
-      : `guest=1&order_no=${encodeURIComponent(responseData.order_no)}`
+    const queryParts = [
+      `order_no=${encodeURIComponent(responseData.order_no)}`,
+    ]
+    if (isGuestCheckout.value) {
+      queryParts.push('guest=1')
+    }
+    if (requiresOnlineChannel.value && selectedChannelId.value) {
+      queryParts.push(`channel_id=${selectedChannelId.value}`)
+    }
+    const query = queryParts.join('&')
     router.push(`/pay?${query}`)
   } catch (err: any) {
     error.value = err.message || t('checkout.errors.submitFailed')
