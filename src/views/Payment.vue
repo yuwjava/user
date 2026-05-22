@@ -1713,12 +1713,15 @@ watch(
 )
 
 watch(
-  () => [order.value, channels.value, selectedChannelId.value],
+  () => [order.value, channels.value, selectedChannelId.value, latestLoaded.value],
   () => {
     if (autoPayAttempted.value) return
     if (!order.value || order.value.status !== 'pending_payment') return
     if (channels.value.length === 0) return
     if (!selectedChannelId.value) return
+    // 等待历史支付记录加载完成，避免在 loadLatestPayment 异步完成前重复创建支付单
+    // 导致管理端出现一条 failed + 一条 success 的双重记录
+    if (!latestLoaded.value) return
 
     const selected = findChannelByID(selectedChannelId.value)
     if (!selected) return
