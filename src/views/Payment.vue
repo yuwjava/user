@@ -1107,8 +1107,10 @@ const loadOrder = async (options?: { silent?: boolean }) => {
         return
       }
       if (!latestLoaded.value && order.value.status === 'pending_payment') {
-        latestLoaded.value = true
+        // 必须先 await，再设置 latestLoaded，否则 Vue 响应式调度会在
+        // loadLatestPayment 完成前触发 watch，导致 handlePayment 重复创建支付记录
         await loadLatestPayment()
+        latestLoaded.value = true
       }
     }
   }
@@ -1219,6 +1221,8 @@ const loadLatestPayment = async () => {
       if (mode === 'redirect' && data.pay_url) {
         openPayLinkInCompatibleWindow()
       } else if (mode === 'jsapi' && data.jsapi_params) {
+        // 已找到现有 JSAPI 支付，标记为已处理，阻止 watch 再次调用 handlePayment 创建新支付单
+        autoPayAttempted.value = true
         void handleInvokeWechatJSAPI()
       }
     }
