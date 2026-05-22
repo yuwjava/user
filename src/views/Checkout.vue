@@ -1104,9 +1104,21 @@ const handleSubmit = async () => {
       return
     }
 
+
+    // JSAPI 模式需要 openid（通过微信 OAuth2 获取），Checkout 页面不具备 OAuth 能力，
+    // 传入 JSAPI 渠道的 channel_id 会导致后端创建预付单失败并产生一条 failed 支付记录。
+    // 因此 JSAPI 渠道仅传 channel_id 到跳转参数，让 Payment 页面完成 OAuth → 创建支付的完整流程。
+    const selectedChannel = paymentChannels.value.find(
+      (ch: any) => Number(ch?.id) === Number(selectedChannelId.value)
+    )
+    const isJSAPIChannel = String(selectedChannel?.interaction_mode || '').toLowerCase() === 'jsapi'
+    const payloadChannelId = (requiresOnlineChannel.value && selectedChannelId.value && !isJSAPIChannel)
+      ? selectedChannelId.value
+      : undefined
+
     const payload = {
       ...buildOrderPayload(),
-      channel_id: requiresOnlineChannel.value ? (selectedChannelId.value || undefined) : undefined,
+      channel_id: payloadChannelId,
       use_balance: useBalance.value,
     }
 
