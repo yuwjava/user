@@ -182,6 +182,11 @@ const messages = {
             subtitle: '重要公告和通知',
             empty: '暂无公告',
         },
+        announcement: {
+            close: '关闭',
+            dismissToday: '今日不再提示',
+            dismissForever: '不再提示',
+        },
         about: {
             title: '关于我们',
             subtitle: '了解Dujiao-Next',
@@ -1317,6 +1322,11 @@ const messages = {
             subtitle: '重要公告和通知',
             empty: '暫無公告',
         },
+        announcement: {
+            close: '關閉',
+            dismissToday: '今日不再提示',
+            dismissForever: '不再提示',
+        },
         about: {
             title: '關於我們',
             subtitle: '了解Dujiao-Next',
@@ -2410,6 +2420,11 @@ const messages = {
         notice: {
             subtitle: 'Important notices and announcements',
             empty: 'No notices',
+        },
+        announcement: {
+            close: 'Close',
+            dismissToday: "Don't show today",
+            dismissForever: "Don't show again",
         },
         about: {
             title: 'About Us',
