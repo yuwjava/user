@@ -65,6 +65,22 @@
               </svg>
               <span>WhatsApp</span>
             </a>
+            <div v-if="wechatQRCodeUrl"
+              class="flex items-center gap-3 rounded-xl border theme-border theme-surface-soft p-3">
+              <div class="shrink-0 rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm dark:border-white/10">
+                <img
+                  :src="wechatQRCodeUrl"
+                  :alt="t('footer.officialAccount')"
+                  loading="lazy"
+                  decoding="async"
+                  class="h-24 w-24 rounded-md object-contain"
+                >
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold theme-text-primary">{{ t('footer.officialAccount') }}</p>
+                <p class="mt-1 text-xs leading-relaxed theme-text-muted">{{ t('footer.officialAccountHint') }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -114,6 +130,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
+import { getImageUrl } from '../utils/image'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -162,6 +179,11 @@ const footerLinks = computed(() => {
   const links = config.value?.footer_links
   if (!Array.isArray(links)) return []
   return links.filter((item: any) => item && typeof item.name === 'string' && item.name.trim())
+})
+
+const wechatQRCodeUrl = computed(() => {
+  const qrcode = String(config.value?.contact?.wechat_qrcode || '').trim()
+  return qrcode ? getImageUrl(qrcode) : ''
 })
 
 const currentYear = new Date().getFullYear()
