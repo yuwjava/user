@@ -214,20 +214,38 @@
                       v-for="sku in activeSkus"
                       :key="sku.id"
                       type="button"
-                      class="flex flex-col items-start rounded-xl border px-3 py-2 text-sm transition-all min-h-[44px]"
+                      class="flex min-h-[58px] items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm transition-all"
                       :class="[
                         normalizeSkuId(sku.id) === selectedSkuId ? 'theme-selected-surface ring-1 ring-primary/30' : 'theme-btn-secondary',
                         isSkuPurchasable(sku) ? 'hover:-translate-y-0.5' : 'cursor-not-allowed opacity-55 border-dashed',
                       ]"
-                      :disabled="!isSkuPurchasable(sku)"
-                      @click="selectedSkuId = normalizeSkuId(sku.id)"
+                      :aria-disabled="!isSkuPurchasable(sku)"
+                      @click="isSkuPurchasable(sku) && (selectedSkuId = normalizeSkuId(sku.id))"
                     >
-                      <span class="font-semibold leading-tight">{{ skuDisplayText(sku) }}</span>
                       <span
-                        class="mt-1 rounded-full border px-2 py-0.5 text-[11px]"
-                        :class="skuStockBadgeClass(sku)"
+                        class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border theme-border bg-white/60 dark:bg-white/5"
+                        :class="skuImageUrl(sku) ? 'cursor-zoom-in' : ''"
+                        @click.stop="openSkuImagePreview(sku)"
                       >
-                        {{ skuStockText(sku) }}
+                        <img
+                          v-if="skuImageUrl(sku)"
+                          :src="skuImageUrl(sku)"
+                          :alt="skuDisplayText(sku)"
+                          class="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                        <svg v-else class="h-5 w-5 theme-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                        </svg>
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block font-semibold leading-tight">{{ skuDisplayText(sku) }}</span>
+                        <span
+                          class="mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px]"
+                          :class="skuStockBadgeClass(sku)"
+                        >
+                          {{ skuStockText(sku) }}
+                        </span>
                       </span>
                     </button>
                   </div>
@@ -415,6 +433,33 @@
         </template>
       </EmptyState>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="skuImagePreview"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+        role="dialog"
+        aria-modal="true"
+        @click="skuImagePreview = ''"
+      >
+        <button
+          type="button"
+          class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+          @click.stop="skuImagePreview = ''"
+          aria-label="Close"
+        >
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <img
+          :src="skuImagePreview"
+          :alt="getLocalizedText(product?.title || {})"
+          class="max-h-[86vh] max-w-[92vw] rounded-xl object-contain shadow-2xl"
+          @click.stop
+        />
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -477,6 +522,7 @@ const formatRelatedPostDate = (dateString: string) => {
 }
 const currentImage = ref<string>('')
 const selectedSkuId = ref(0)
+const skuImagePreview = ref('')
 const quantity = ref(1)
 const purchaseWarning = ref('')
 const purchaseActionsRef = ref<HTMLElement | null>(null)
@@ -492,6 +538,23 @@ const selectedSku = computed(() => {
   if (selectedSkuId.value <= 0) return null
   return activeSkus.value.find((sku: any) => normalizeSkuId(sku?.id) === selectedSkuId.value) || null
 })
+
+const selectedSkuImage = computed(() => {
+  const imageURL = String(selectedSku.value?.image_url || '').trim()
+  return imageURL ? getImageUrl(imageURL) : ''
+})
+
+const skuImageUrl = (sku: any) => {
+  const imageURL = String(sku?.image_url || '').trim()
+  return imageURL ? getImageUrl(imageURL) : ''
+}
+
+const openSkuImagePreview = (sku: any) => {
+  const imageURL = skuImageUrl(sku)
+  if (imageURL) {
+    skuImagePreview.value = imageURL
+  }
+}
 
 // 会员价相关
 const userMemberLevelId = computed(() => {
@@ -652,14 +715,23 @@ const categoryName = computed(() => {
 })
 
 const images = computed(() => {
-  if (!product.value?.images) return []
+  const result: string[] = []
+  if (selectedSkuImage.value) {
+    result.push(selectedSkuImage.value)
+  }
+  if (!product.value?.images) return result
   let imageArray: string[] = []
   if (Array.isArray(product.value.images)) {
     imageArray = product.value.images
   } else if (product.value.images.images && Array.isArray(product.value.images.images)) {
     imageArray = product.value.images.images
   }
-  return imageArray.map(img => getImageUrl(img))
+  imageArray.map(img => getImageUrl(img)).forEach((image) => {
+    if (image && !result.includes(image)) {
+      result.push(image)
+    }
+  })
+  return result
 })
 
 const skuDisplayText = (sku: any) => {
@@ -983,6 +1055,9 @@ watch(
   () => {
     purchaseWarning.value = ''
     quantity.value = quantityEffectiveMin.value
+    if (selectedSkuImage.value) {
+      currentImage.value = selectedSkuImage.value
+    }
   }
 )
 
