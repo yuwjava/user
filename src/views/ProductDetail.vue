@@ -247,6 +247,20 @@
                           {{ skuStockText(sku) }}
                         </span>
                       </span>
+                      <span class="ml-auto shrink-0 text-right">
+                        <span
+                          class="block whitespace-nowrap text-sm font-bold tabular-nums"
+                          :class="skuPriceToneClass(sku)"
+                        >
+                          {{ formatPrice(getSkuDisplayPrice(sku), siteCurrency) }}
+                        </span>
+                        <span
+                          v-if="hasSkuOriginalPrice(sku)"
+                          class="block whitespace-nowrap text-[11px] theme-price-original"
+                        >
+                          {{ formatPrice(sku.price_amount, siteCurrency) }}
+                        </span>
+                      </span>
                     </button>
                   </div>
                   <p v-if="requiresSKUSelection" class="mt-2 text-xs text-amber-500">
@@ -584,6 +598,52 @@ const hasMemberPrice = computed(() => {
   const basePrice = Number(selectedSku.value?.price_amount || 0)
   return selectedSkuMemberPrice.value < basePrice
 })
+
+const getSkuPriceDetails = (sku: any) => {
+  const originalAmount = Number(sku?.price_amount)
+  const hasOriginalAmount = Number.isFinite(originalAmount)
+  const promotionAmount = hasSkuPromotionPrice(sku)
+    ? Number(getSkuPromotionPriceAmount(sku))
+    : null
+  const memberPrice = getMemberPriceForSku(normalizeSkuId(sku?.id))
+  const memberAmount = memberPrice !== null && Number.isFinite(memberPrice) ? memberPrice : null
+  const comparisonAmount = promotionAmount !== null && Number.isFinite(promotionAmount)
+    ? promotionAmount
+    : originalAmount
+
+  if (memberAmount !== null && Number.isFinite(comparisonAmount) && memberAmount < comparisonAmount) {
+    return {
+      amount: memberAmount,
+      originalAmount: hasOriginalAmount ? originalAmount : null,
+      tone: 'member',
+    }
+  }
+
+  if (promotionAmount !== null && Number.isFinite(promotionAmount)) {
+    return {
+      amount: promotionAmount,
+      originalAmount: hasOriginalAmount ? originalAmount : null,
+      tone: 'promotion',
+    }
+  }
+
+  return {
+    amount: sku?.price_amount ?? '',
+    originalAmount: null,
+    tone: 'base',
+  }
+}
+
+const getSkuDisplayPrice = (sku: any) => getSkuPriceDetails(sku).amount
+
+const hasSkuOriginalPrice = (sku: any) => getSkuPriceDetails(sku).originalAmount !== null
+
+const skuPriceToneClass = (sku: any) => {
+  const tone = getSkuPriceDetails(sku).tone
+  if (tone === 'member') return 'text-amber-600 dark:text-amber-300'
+  if (tone === 'promotion') return 'text-rose-600 dark:text-rose-300'
+  return 'theme-text-accent'
+}
 
 const normalizeStockNumber = (value: unknown) => {
   const numberValue = Number(value)
