@@ -10,7 +10,17 @@
             @touchstart="onBannerTouchStart"
             @touchend="onBannerTouchEnd">
             <Transition name="banner-fade" mode="out-in">
-              <img v-if="!bannerLoading && heroImage" :src="heroImage" :key="heroImage" class="absolute inset-0 h-full w-full object-cover" />
+              <img
+                v-if="!bannerLoading && heroImage"
+                :src="heroImage"
+                :key="heroImage"
+                :alt="heroTitle"
+                :fetchpriority="currentBannerIndex === 0 ? 'high' : 'auto'"
+                decoding="async"
+                width="1280"
+                height="400"
+                class="absolute inset-0 h-full w-full object-cover"
+              />
             </Transition>
             <div class="absolute inset-0 bg-black/50"></div>
             <div v-if="bannerLoading" class="relative flex min-h-[200px] flex-col justify-between p-5 sm:min-h-[240px] sm:p-6 md:min-h-[320px] md:p-10">
@@ -134,7 +144,7 @@
                   <div class="flex items-center gap-2 mb-3 px-0.5">
                     <span class="w-1 h-5 rounded-full theme-accent-stick flex-shrink-0"></span>
                     <img v-if="group.categoryIcon" :src="getImageUrl(group.categoryIcon)"
-                      :alt="group.categoryName" loading="lazy" class="h-5 w-5 rounded object-cover flex-shrink-0" />
+                      :alt="group.categoryName" width="20" height="20" loading="lazy" decoding="async" class="h-5 w-5 rounded object-cover flex-shrink-0" />
                     <span class="text-sm font-semibold theme-text-primary truncate">{{ group.categoryName }}</span>
                     <span class="text-xs theme-text-muted">({{ group.products.length }})</span>
                   </div>
@@ -184,7 +194,17 @@
           @touchend="onBannerTouchEnd">
           <!-- Banner image with fade transition -->
           <Transition name="banner-fade" mode="out-in">
-            <img v-if="!bannerLoading && heroImage" :src="heroImage" :key="heroImage" class="absolute inset-0 h-full w-full object-cover" />
+            <img
+              v-if="!bannerLoading && heroImage"
+              :src="heroImage"
+              :key="heroImage"
+              :alt="heroTitle"
+              :fetchpriority="currentBannerIndex === 0 ? 'high' : 'auto'"
+              decoding="async"
+              width="1280"
+              height="400"
+              class="absolute inset-0 h-full w-full object-cover"
+            />
           </Transition>
           <div class="absolute inset-0 bg-black/50"></div>
 
@@ -381,6 +401,12 @@ import { useProductList } from '../composables/useProductList'
 import { useProductListGroups } from '../composables/useProductListGroups'
 import { usePageSeo } from '../composables/usePageSeo'
 import { useAppStore } from '../stores/app'
+import {
+  DEFAULT_OG_IMAGE_URL,
+  VERTICAL_HOME_DESCRIPTION,
+  buildBreadcrumbJsonLd,
+  resolveShopBaseUrl,
+} from '../utils/seo'
 import ProductCard from '../components/ProductCard.vue'
 import ProductListItem from '../components/ProductListItem.vue'
 import ProductQuickBuy from '../components/ProductQuickBuy.vue'
@@ -470,12 +496,72 @@ const seoCategoryName = computed(() => {
 })
 usePageSeo({
   canonicalPath: () => route.path,
+  image: () => {
+    const seo = appStore.config?.seo as { og_image?: string; default_og_image?: string } | undefined
+    return seo?.og_image || seo?.default_og_image || DEFAULT_OG_IMAGE_URL
+  },
   title: () => {
     if (route.name === 'category-products') {
-      return seoCategoryName.value || t('nav.products')
+      return seoCategoryName.value
+        ? `${seoCategoryName.value}小学科学课件｜按年级单元选课`
+        : '小学科学全版本课件资源中心'
     }
-    if (route.name === 'products') return t('nav.products')
+    if (route.name === 'products') return '小学科学全版本课件资源中心'
     return undefined
+  },
+  description: () => {
+    if (route.name === 'category-products' && seoCategoryName.value) {
+      return `${seoCategoryName.value}小学科学同步备课资源专区，提供1-6年级上下册可编辑PPT课件、教学设计、课堂逐字稿与随堂练习源文件，付款秒级自动发货。`
+    }
+    if (route.name === 'products') {
+      return '浏览备课箱小学科学全版本同步备课资源，涵盖教科版、苏教版、粤教版、人教版、大象版1-6年级可编辑PPT课件、教学设计、课堂逐字稿与同步练习源文件。'
+    }
+    return undefined
+  },
+  jsonLd: () => {
+    const base = resolveShopBaseUrl(appStore.config?.brand?.site_url)
+    if (route.name === 'category-products') {
+      const items = [
+        { name: '首页', url: `${base}/` },
+        { name: '商品中心', url: `${base}/products` },
+      ]
+      if (seoCategoryName.value) {
+        items.push({
+          name: `${seoCategoryName.value}小学科学课件`,
+          url: `${base}${route.path}`,
+        })
+      }
+      return [buildBreadcrumbJsonLd(items)]
+    }
+    if (route.name === 'products') {
+      return [
+        buildBreadcrumbJsonLd([
+          { name: '首页', url: `${base}/` },
+          { name: '小学科学全版本课件资源中心', url: `${base}/products` },
+        ]),
+      ]
+    }
+    return [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: '备课箱商城',
+        url: `${base}/`,
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${base}/products?search={search_term_string}`,
+          'query-input': 'required name=search_term_string',
+        },
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'EducationalOrganization',
+        name: '备课箱',
+        url: 'https://beikevip.site/',
+        description: VERTICAL_HOME_DESCRIPTION,
+        sameAs: [`${base}/`, 'https://beikevip.site/lab/', 'https://beikevip.site/about/'],
+      },
+    ]
   },
 })
 

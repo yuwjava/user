@@ -13,7 +13,7 @@
         :class="isSoldOut(product) ? 'bg-black/15' : 'bg-black/15 group-hover:bg-black/5'"
       ></div>
       <img v-if="displayImageSrc && !imageErrored" :src="displayImageSrc"
-        :alt="getLocalizedText(product.title)" loading="lazy" decoding="async"
+        :alt="getLocalizedText(product.title)" width="640" height="480" loading="lazy" decoding="async"
         class="w-full h-full object-cover transform transition-transform duration-700 ease-out"
         :class="[
           isSoldOut(product) ? 'grayscale brightness-75' : 'group-hover:scale-105',

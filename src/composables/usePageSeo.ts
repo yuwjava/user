@@ -1,14 +1,23 @@
 import { computed } from 'vue'
 import { useHead } from '@unhead/vue'
 import { useAppStore } from '../stores/app'
-import { getImageUrl } from '../utils/image'
+import {
+  DEFAULT_OG_IMAGE_URL,
+  VERTICAL_HOME_DESCRIPTION,
+  VERTICAL_HOME_TITLE,
+  VERTICAL_SITE_SUFFIX,
+  containsLegacyBroadSubjectCopy,
+  isGenericOrLegacyHomeTitle,
+  resolveAbsoluteImageUrl,
+  resolveShopBaseUrl,
+} from '../utils/seo'
 
 export interface PageSeoOptions {
-  /** 页面专属标题；若与站点名相同，仅展示站点名 */
+  /** 页面专属标题；缺省时采用商城首页小学科学垂直定位标题 */
   title?: () => string | undefined | null
-  /** 页面描述；缺省时回落到站点全局描述 */
+  /** 页面描述；缺省时回落到站点小学科学全局描述 */
   description?: () => string | undefined | null
-  /** 分享图：可填绝对 URL、相对路径或上传图 key（自动走 getImageUrl） */
+  /** 分享图：可填绝对 URL、相对路径或上传图路径（自动转绝对 URL，缺省兜底横版分享图） */
   image?: () => string | undefined | null
   /** 规范化路径（如 /products/foo），缺省时取当前 location.pathname */
   canonicalPath?: () => string | undefined | null
@@ -16,32 +25,16 @@ export interface PageSeoOptions {
   type?: () => string | undefined | null
   /** 标识页面不该被索引（私密页/动态查询页） */
   noindex?: () => boolean
-}
-
-const trimSlashEnd = (s: string) => s.replace(/\/+$/, '')
-
-const resolveImage = (raw: string, baseUrl: string): string => {
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  if (/^https?:\/\//i.test(trimmed)) return trimmed
-  // 优先走 getImageUrl 处理 uploads 路径，得到的可能是相对 /uploads/...
-  const resolved = getImageUrl(trimmed) || trimmed
-  if (/^https?:\/\//i.test(resolved)) return resolved
-  if (baseUrl && resolved.startsWith('/')) return baseUrl + resolved
-  return resolved
+  /** 页面级结构化数据 Schema.org JSON-LD 列表 */
+  jsonLd?: () => Array<Record<string, unknown>>
 }
 
 export function usePageSeo(options: PageSeoOptions = {}) {
   const appStore = useAppStore()
 
-  const baseUrl = computed(() => {
-    const fromConfig = trimSlashEnd(String(appStore.config?.brand?.site_url || '').trim())
-    if (fromConfig) return fromConfig
-    if (typeof window !== 'undefined') return trimSlashEnd(window.location.origin)
-    return ''
-  })
+  const baseUrl = computed(() => resolveShopBaseUrl(appStore.config?.brand?.site_url))
 
-  const siteName = computed(() => {
+  const configuredHomeTitle = computed(() => {
     const lang = appStore.locale
     const seo = appStore.config?.seo
     const localized = seo?.title?.[lang]
@@ -49,16 +42,35 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     return String(appStore.config?.brand?.site_name || '').trim()
   })
 
+  const homeTitle = computed(() => {
+    if (isGenericOrLegacyHomeTitle(configuredHomeTitle.value)) {
+      return VERTICAL_HOME_TITLE
+    }
+    return configuredHomeTitle.value
+  })
+
+  const siteBrandName = computed(() => {
+    const rawName = String(appStore.config?.brand?.site_name || '').trim()
+    if (!rawName || /^dujiao-next$/i.test(rawName) || containsLegacyBroadSubjectCopy(rawName)) {
+      return VERTICAL_SITE_SUFFIX
+    }
+    return rawName
+  })
+
   const siteDescription = computed(() => {
     const lang = appStore.locale
     const seo = appStore.config?.seo
-    const localized = seo?.description?.[lang]
-    return localized ? String(localized).trim() : ''
+    const localized = seo?.description?.[lang] ? String(seo.description[lang]).trim() : ''
+    if (!localized || containsLegacyBroadSubjectCopy(localized)) {
+      return VERTICAL_HOME_DESCRIPTION
+    }
+    return localized
   })
 
-  const defaultImage = computed(() => {
-    const seo = appStore.config?.seo as { default_og_image?: string } | undefined
-    return seo?.default_og_image ? String(seo.default_og_image).trim() : ''
+  const configuredOgImage = computed(() => {
+    const seo = appStore.config?.seo as { og_image?: string; default_og_image?: string } | undefined
+    const candidate = seo?.og_image || seo?.default_og_image || ''
+    return candidate ? String(candidate).trim() : ''
   })
 
   const pageTitle = computed(() => {
@@ -67,16 +79,19 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   })
 
   const fullTitle = computed(() => {
-    if (pageTitle.value && siteName.value && pageTitle.value !== siteName.value) {
-      return `${pageTitle.value} - ${siteName.value}`
+    if (!pageTitle.value) {
+      return homeTitle.value
     }
-    return pageTitle.value || siteName.value || undefined
+    if (pageTitle.value.includes('备课箱') || pageTitle.value === siteBrandName.value) {
+      return pageTitle.value
+    }
+    return `${pageTitle.value} - ${siteBrandName.value}`
   })
 
   const fullDescription = computed(() => {
     const pageDesc = options.description?.()
     if (pageDesc && String(pageDesc).trim()) return String(pageDesc).trim()
-    return siteDescription.value || undefined
+    return siteDescription.value
   })
 
   const fullCanonical = computed(() => {
@@ -85,25 +100,24 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     if (!path && typeof window !== 'undefined') path = window.location.pathname
     if (!path) path = '/'
     if (!path.startsWith('/')) path = '/' + path
-    if (!baseUrl.value) return path
-    return baseUrl.value + path
+    return `${baseUrl.value}${path}`
   })
 
   const fullImage = computed(() => {
     const raw = options.image?.()
     if (raw && String(raw).trim()) {
-      return resolveImage(String(raw), baseUrl.value) || undefined
+      return resolveAbsoluteImageUrl(String(raw), appStore.config?.brand?.site_url)
     }
-    if (defaultImage.value) {
-      return resolveImage(defaultImage.value, baseUrl.value) || undefined
+    if (configuredOgImage.value) {
+      return resolveAbsoluteImageUrl(configuredOgImage.value, appStore.config?.brand?.site_url)
     }
-    return undefined
+    return DEFAULT_OG_IMAGE_URL
   })
 
   useHead({
     title: () => fullTitle.value,
     link: () => {
-      if (!fullCanonical.value) return []
+      if (options.noindex?.() || !fullCanonical.value) return []
       return [{ key: 'canonical', rel: 'canonical', href: fullCanonical.value }]
     },
     meta: () => {
@@ -121,9 +135,11 @@ export function usePageSeo(options: PageSeoOptions = {}) {
       tags.push({ property: 'og:type', content: ogType })
       if (fullTitle.value) tags.push({ property: 'og:title', content: fullTitle.value })
       if (fullDescription.value) tags.push({ property: 'og:description', content: fullDescription.value })
-      if (fullCanonical.value) tags.push({ property: 'og:url', content: fullCanonical.value })
+      if (!options.noindex?.() && fullCanonical.value) {
+        tags.push({ property: 'og:url', content: fullCanonical.value })
+      }
       if (fullImage.value) tags.push({ property: 'og:image', content: fullImage.value })
-      if (siteName.value) tags.push({ property: 'og:site_name', content: siteName.value })
+      tags.push({ property: 'og:site_name', content: '备课箱商城' })
 
       tags.push({ name: 'twitter:card', content: 'summary_large_image' })
       if (fullTitle.value) tags.push({ name: 'twitter:title', content: fullTitle.value })
@@ -131,6 +147,16 @@ export function usePageSeo(options: PageSeoOptions = {}) {
       if (fullImage.value) tags.push({ name: 'twitter:image', content: fullImage.value })
 
       return tags
+    },
+    script: () => {
+      const items = options.jsonLd?.() || []
+      return items
+        .filter((item) => item && typeof item === 'object')
+        .map((item, idx) => ({
+          key: `page-jsonld-${idx}`,
+          type: 'application/ld+json',
+          innerHTML: JSON.stringify(item),
+        }))
     },
   })
 }

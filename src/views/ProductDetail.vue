@@ -35,11 +35,7 @@
       <div v-else-if="product">
         <BreadcrumbNav
           class="mb-8"
-          :items="[
-            { label: t('nav.home'), to: '/' },
-            { label: t('nav.products'), to: '/products' },
-            { label: getLocalizedText(product.title) },
-          ]"
+          :items="breadcrumbItems"
         />
 
         <!-- Main Info Card -->
@@ -231,6 +227,9 @@
                           v-if="skuImageUrl(sku)"
                           :src="skuImageUrl(sku)"
                           :alt="skuDisplayText(sku)"
+                          width="44"
+                          height="44"
+                          decoding="async"
                           class="h-full w-full object-cover"
                           loading="lazy"
                         />
@@ -374,7 +373,7 @@
               class="group theme-panel-soft backdrop-blur-md border rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col"
             >
               <div v-if="rp.thumbnail" class="h-32 overflow-hidden relative">
-                <img :src="getImageUrl(rp.thumbnail)" :alt="getLocalizedText(rp.title)" loading="lazy"
+                <img :src="getImageUrl(rp.thumbnail)" :alt="getLocalizedText(rp.title)" width="480" height="270" loading="lazy" decoding="async"
                   class="h-full w-full object-cover transition-transform group-hover:scale-110" />
               </div>
               <div class="p-5 flex flex-col flex-1">
@@ -484,6 +483,13 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 import { productAPI } from '../api'
 import { getImageUrl } from '../utils/image'
+import {
+  VERTICAL_HOME_KEYWORDS,
+  buildBreadcrumbJsonLd,
+  buildStructuredProductDescription,
+  resolveAbsoluteImageUrl,
+  resolveShopBaseUrl,
+} from '../utils/seo'
 import { processHtmlForDisplay } from '../utils/content'
 import { useCartStore } from '../stores/cart'
 import { useBuyNowStore } from '../stores/buyNow'
@@ -1023,13 +1029,47 @@ const debouncedLoadProduct = debounceAsync(loadProduct, 300)
 
 const canonicalUrl = computed(() => {
   if (!product.value?.slug) return ''
-  const fromConfig = String(appStore.config?.brand?.site_url || '').trim().replace(/\/+$/, '')
-  const base = fromConfig || window.location.origin.replace(/\/+$/, '')
+  const base = resolveShopBaseUrl(appStore.config?.brand?.site_url)
   return `${base}/products/${product.value.slug}`
 })
 
+const breadcrumbItems = computed(() => {
+  const items: Array<{ label: string; to?: string }> = [
+    { label: t('nav.home'), to: '/' },
+  ]
+  if (product.value?.category?.slug) {
+    items.push({
+      label: categoryName.value || t('nav.products'),
+      to: `/categories/${product.value.category.slug}`,
+    })
+  } else {
+    items.push({ label: t('nav.products'), to: '/products' })
+  }
+  if (product.value?.title) {
+    items.push({ label: getLocalizedText(product.value.title) })
+  }
+  return items
+})
+
+const fullProductDescription = computed(() => {
+  if (!product.value) return ''
+  const seoMeta = product.value.seo_meta || {}
+  const rawSeoDesc = getLocalizedText(seoMeta.description) || (typeof seoMeta.description === 'string' ? seoMeta.description : '')
+  const title = getLocalizedText(product.value.title)
+  return buildStructuredProductDescription(rawSeoDesc, title, categoryName.value)
+})
+
+const absoluteOgImageUrl = computed(() => {
+  const firstImage = images.value && images.value.length > 0 ? images.value[0] : ''
+  return resolveAbsoluteImageUrl(firstImage, appStore.config?.brand?.site_url)
+})
+
 useHead({
-  title: () => product.value ? getLocalizedText(product.value.title) : '',
+  title: () => {
+    if (!product.value) return ''
+    const title = getLocalizedText(product.value.title)
+    return `${title} - 备课箱`
+  },
   link: () => {
     if (!canonicalUrl.value) return []
     return [{ rel: 'canonical', href: canonicalUrl.value }]
@@ -1037,8 +1077,8 @@ useHead({
   meta: () => {
     if (!product.value) return []
     const seoMeta = product.value.seo_meta || {}
-    const seoKeywords = getLocalizedText(seoMeta.keywords) || (typeof seoMeta.keywords === 'string' ? seoMeta.keywords : '')
-    const seoDescription = getLocalizedText(seoMeta.description) || (typeof seoMeta.description === 'string' ? seoMeta.description : '')
+    const seoKeywords = getLocalizedText(seoMeta.keywords) || (typeof seoMeta.keywords === 'string' ? seoMeta.keywords : '') || VERTICAL_HOME_KEYWORDS
+    const seoDescription = fullProductDescription.value
     const tags = []
 
     if (seoKeywords) tags.push({ name: 'keywords', content: seoKeywords })
@@ -1046,13 +1086,13 @@ useHead({
 
     tags.push({ property: 'og:type', content: 'product' })
     if (product.value.title) {
-      tags.push({ property: 'og:title', content: getLocalizedText(product.value.title) })
+      tags.push({ property: 'og:title', content: `${getLocalizedText(product.value.title)} - 备课箱` })
     }
     if (seoDescription) {
       tags.push({ property: 'og:description', content: seoDescription })
     }
-    if (images.value && images.value.length > 0) {
-      tags.push({ property: 'og:image', content: images.value[0] })
+    if (absoluteOgImageUrl.value) {
+      tags.push({ property: 'og:image', content: absoluteOgImageUrl.value })
     }
     if (canonicalUrl.value) {
       tags.push({ property: 'og:url', content: canonicalUrl.value })
@@ -1060,13 +1100,13 @@ useHead({
 
     tags.push({ name: 'twitter:card', content: 'summary_large_image' })
     if (product.value.title) {
-      tags.push({ name: 'twitter:title', content: getLocalizedText(product.value.title) })
+      tags.push({ name: 'twitter:title', content: `${getLocalizedText(product.value.title)} - 备课箱` })
     }
     if (seoDescription) {
       tags.push({ name: 'twitter:description', content: seoDescription })
     }
-    if (images.value && images.value.length > 0) {
-      tags.push({ name: 'twitter:image', content: images.value[0] })
+    if (absoluteOgImageUrl.value) {
+      tags.push({ name: 'twitter:image', content: absoluteOgImageUrl.value })
     }
 
     return tags
@@ -1074,15 +1114,24 @@ useHead({
   script: () => {
     if (!product.value) return []
     const title = getLocalizedText(product.value.title)
-    const seoMeta = product.value.seo_meta || {}
-    const description = getLocalizedText(seoMeta.description) || (typeof seoMeta.description === 'string' ? seoMeta.description : '')
+    const description = fullProductDescription.value
     const priceAmount = product.value.price_amount || '0'
     const currency = siteCurrency.value || 'CNY'
 
-    const jsonLd: Record<string, any> = {
+    const activeSkuList = activeSkus.value
+    const firstSkuCode = activeSkuList.length > 0 && activeSkuList[0]?.sku_code
+      ? String(activeSkuList[0].sku_code)
+      : String(product.value.slug || product.value.id || '')
+
+    const productJsonLd: Record<string, any> = {
       '@context': 'https://schema.org',
       '@type': 'Product',
       name: title,
+      sku: firstSkuCode,
+      brand: {
+        '@type': 'Brand',
+        name: '备课箱',
+      },
       url: canonicalUrl.value || window.location.href,
       offers: {
         '@type': 'Offer',
@@ -1091,18 +1140,46 @@ useHead({
         availability: product.value.stock_status === 'out_of_stock'
           ? 'https://schema.org/OutOfStock'
           : 'https://schema.org/InStock',
+        url: canonicalUrl.value || window.location.href,
       },
     }
-    if (description) jsonLd.description = description
-    if (images.value.length > 0) jsonLd.image = images.value
+    if (description) productJsonLd.description = description
+    if (absoluteOgImageUrl.value) productJsonLd.image = absoluteOgImageUrl.value
     if (product.value.category?.name) {
-      jsonLd.category = getLocalizedText(product.value.category.name)
+      productJsonLd.category = getLocalizedText(product.value.category.name)
     }
 
-    return [{
-      type: 'application/ld+json',
-      innerHTML: JSON.stringify(jsonLd),
-    }]
+    const breadcrumbs = [
+      { name: '首页', url: resolveShopBaseUrl(appStore.config?.brand?.site_url) + '/' },
+    ]
+    if (product.value.category?.slug) {
+      breadcrumbs.push({
+        name: categoryName.value || '商品分类',
+        url: `${resolveShopBaseUrl(appStore.config?.brand?.site_url)}/categories/${product.value.category.slug}`,
+      })
+    } else {
+      breadcrumbs.push({
+        name: '商品中心',
+        url: `${resolveShopBaseUrl(appStore.config?.brand?.site_url)}/products`,
+      })
+    }
+    breadcrumbs.push({
+      name: title,
+      url: canonicalUrl.value || window.location.href,
+    })
+
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbs)
+
+    return [
+      {
+        type: 'application/ld+json',
+        innerHTML: JSON.stringify(productJsonLd),
+      },
+      {
+        type: 'application/ld+json',
+        innerHTML: JSON.stringify(breadcrumbJsonLd),
+      },
+    ]
   },
 })
 

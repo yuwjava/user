@@ -3,6 +3,13 @@ import { computed, ref } from 'vue'
 import { configAPI } from '../api'
 import { applyCustomScripts } from '../utils/customScripts'
 import { getImageUrl } from '../utils/image'
+import {
+    VERTICAL_HOME_DESCRIPTION,
+    VERTICAL_HOME_KEYWORDS,
+    VERTICAL_HOME_TITLE,
+    containsLegacyBroadSubjectCopy,
+    isGenericOrLegacyHomeTitle,
+} from '../utils/seo'
 import { useHead } from '@unhead/vue'
 
 export const useAppStore = defineStore('app', () => {
@@ -26,28 +33,33 @@ export const useAppStore = defineStore('app', () => {
     // canonical / og / twitter 等页面级别字段交由各页面通过 usePageSeo 接管，
     // 避免与页面级 useHead 冲突或产生重复标签。
     useHead({
-        htmlAttrs: { lang: computed(() => locale.value) },
+        htmlAttrs: { lang: computed(() => locale.value || 'zh-CN') },
         title: () => {
             const seo = config.value?.seo
             const lang = locale.value
-            const localized = seo?.title?.[lang]
-            if (localized) return String(localized).trim() || undefined
-            const siteName = String(config.value?.brand?.site_name || '').trim()
-            return siteName || undefined
+            const localized = seo?.title?.[lang] ? String(seo.title[lang]).trim() : ''
+            const candidate = localized || String(config.value?.brand?.site_name || '').trim()
+            if (isGenericOrLegacyHomeTitle(candidate)) {
+                return VERTICAL_HOME_TITLE
+            }
+            return candidate
         },
         link: () => [{ key: 'favicon', rel: 'icon', href: siteIconHref.value }],
         meta: () => {
             const seo = config.value?.seo
-            if (!seo) return []
             const lang = locale.value
-            const tags: Array<{ name?: string; property?: string; content: string }> = []
-            if (seo.keywords && seo.keywords[lang]) {
-                tags.push({ name: 'keywords', content: String(seo.keywords[lang]) })
-            }
-            if (seo.description && seo.description[lang]) {
-                tags.push({ name: 'description', content: String(seo.description[lang]) })
-            }
-            return tags
+            const rawKeywords = seo?.keywords?.[lang] ? String(seo.keywords[lang]).trim() : ''
+            const rawDescription = seo?.description?.[lang] ? String(seo.description[lang]).trim() : ''
+            const keywords = !rawKeywords || containsLegacyBroadSubjectCopy(rawKeywords)
+                ? VERTICAL_HOME_KEYWORDS
+                : rawKeywords
+            const description = !rawDescription || containsLegacyBroadSubjectCopy(rawDescription)
+                ? VERTICAL_HOME_DESCRIPTION
+                : rawDescription
+            return [
+                { name: 'keywords', content: keywords },
+                { name: 'description', content: description },
+            ]
         }
     })
 
