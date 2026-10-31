@@ -134,13 +134,15 @@ import { postAPI } from '../api'
 import { getImageUrl } from '../utils/image'
 import { debounceAsync } from '../utils/debounce'
 import { usePageSeo } from '../composables/usePageSeo'
+import { STATIC_PAGE_SEO } from '../utils/seo'
 
 const router = useRouter()
 const { t } = useI18n()
 const appStore = useAppStore()
 
 usePageSeo({
-  title: () => t('nav.blog'),
+  title: () => STATIC_PAGE_SEO.blog.title,
+  description: () => STATIC_PAGE_SEO.blog.description,
   canonicalPath: () => '/blog',
 })
 

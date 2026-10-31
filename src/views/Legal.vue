@@ -38,6 +38,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 import { usePageSeo } from '../composables/usePageSeo'
+import { STATIC_PAGE_SEO } from '../utils/seo'
 
 const { t } = useI18n()
 
@@ -46,7 +47,8 @@ const props = defineProps<{
 }>()
 
 usePageSeo({
-  title: () => props.type === 'terms' ? t('footer.terms') : t('footer.privacy'),
+  title: () => STATIC_PAGE_SEO[props.type].title,
+  description: () => STATIC_PAGE_SEO[props.type].description,
   canonicalPath: () => props.type === 'terms' ? '/terms' : '/privacy',
 })
 

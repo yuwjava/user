@@ -31,6 +31,33 @@ export const VERTICAL_PRODUCTS_DESCRIPTION =
 export const buildCategoryDescription = (categoryName: string): string =>
   `备课箱商城「${categoryName}」分类：浏览该分类下全部在售的小学科学备课资源，扫码购买，自动发货。`
 
+/**
+ * 固定页面的完整 <title> 与描述，与 dujiao-next html_shell_service.go 中对应 build*Payload 逐字一致。
+ * 前台必须显式传入，否则 usePageSeo 会退回后台站点设置里的首页描述，JS 渲染后覆盖服务端输出。
+ */
+export const STATIC_PAGE_SEO = {
+  blog: {
+    title: '小学科学备课教研专栏 - 备课箱',
+    description: '备课箱小学科学教研专栏，分享2022版科学新课标教学设计思路、探究实验课堂组织技巧、公开课磨课指南与同步备课经验。',
+  },
+  notice: {
+    title: '商城公告与资源更新通知 - 备课箱',
+    description: '备课箱商城最新小学科学课件上架通知、教材版本同步更新动态与平台服务公告。',
+  },
+  about: {
+    title: '关于备课箱商城 - 备课箱',
+    description: '备课箱专注小学科学新课标同步教学资源研发，提供教科版、苏教版、粤教版课件、教学设计、逐字稿及免费互动数字实验室。',
+  },
+  terms: {
+    title: '服务条款 - 备课箱',
+    description: '备课箱商城数字备课资源购买、自动发货交付及售后服务条款说明。',
+  },
+  privacy: {
+    title: '隐私政策 - 备课箱',
+    description: '备课箱商城用户信息保护、订单数据安全与隐私政策说明。',
+  },
+} as const
+
 /** 商品中心 H1 / 面包屑名称（商城同时有课件、知识手册与工具，不写“课件”“全版本”） */
 export const PRODUCTS_CENTER_HEADING = '小学科学备课资源中心'
 

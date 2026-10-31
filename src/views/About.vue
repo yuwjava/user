@@ -75,12 +75,14 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 import { usePageSeo } from '../composables/usePageSeo'
+import { STATIC_PAGE_SEO } from '../utils/seo'
 
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 const appStore = useAppStore()
 
 usePageSeo({
-  title: () => t('nav.about'),
+  title: () => STATIC_PAGE_SEO.about.title,
+  description: () => STATIC_PAGE_SEO.about.description,
   canonicalPath: () => '/about',
 })
 
