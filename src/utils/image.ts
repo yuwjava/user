@@ -35,8 +35,12 @@ export function getResponsiveSrcset(url: string | undefined | null): string {
     return RESPONSIVE_IMAGE_WIDTHS.map((w) => `${url}.w${w}.webp ${w}w`).join(', ')
 }
 
-/** 商品列表卡片的 sizes：移动端 2 列，平板 3 列，桌面 4 列（旁边还有分类侧栏） */
-export const PRODUCT_CARD_IMAGE_SIZES = '(min-width: 1024px) 22vw, (min-width: 768px) 30vw, 50vw'
+/**
+ * 商品列表卡片的 sizes：移动端 2 列，平板 3 列，桌面 4 列（旁边还有分类侧栏）。
+ * 移动端卡片实际约 170px 宽，这里故意写 160px：3 倍屏也只取 480 档（约 2.8 倍密度，肉眼无差别），
+ * 否则会取 960 档，单张 110–165 KB。
+ */
+export const PRODUCT_CARD_IMAGE_SIZES = '(min-width: 1024px) 22vw, (min-width: 768px) 30vw, 160px'
 
 /**
  * 从 images 数组中获取第一张图片的完整 URL
