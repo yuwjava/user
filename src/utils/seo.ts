@@ -31,6 +31,52 @@ export const VERTICAL_PRODUCTS_DESCRIPTION =
 export const buildCategoryDescription = (categoryName: string): string =>
   `备课箱商城「${categoryName}」分类：浏览该分类下全部在售的小学科学备课资源，扫码购买，自动发货。`
 
+/** 商品中心 H1 / 面包屑名称（商城同时有课件、知识手册与工具，不写“课件”“全版本”） */
+export const PRODUCTS_CENTER_HEADING = '小学科学备课资源中心'
+
+/** 商品中心完整 <title> */
+export const PRODUCTS_CENTER_TITLE = `${PRODUCTS_CENTER_HEADING} - 备课箱`
+
+/**
+ * 分类页 H1 / 面包屑名称（与 dujiao-next category_seo_naming.go 的 categoryHeading 一致）：
+ * 教材版本（以“版”结尾）→ 教科版小学科学课件；学科父分类（含“小学科学”）→ 小学科学备课资源；其他 → 分类名本身
+ */
+export const buildCategoryHeading = (categoryName: string): string => {
+  const name = categoryName.trim()
+  if (name.endsWith('版')) return `${name}小学科学课件`
+  if (name.includes('小学科学')) return `${name}备课资源`
+  return name
+}
+
+/** 分类页完整 <title>（与 dujiao-next categoryPageTitle 一致） */
+export const buildCategoryTitle = (categoryName: string): string => {
+  const name = categoryName.trim()
+  if (name.endsWith('版')) return `${buildCategoryHeading(name)}｜按年级单元选课 - 备课箱`
+  if (name.includes('小学科学')) return `${buildCategoryHeading(name)}｜按教材版本选课 - 备课箱`
+  return `${name}｜备课箱商城`
+}
+
+/** 商品是否被后台标记为“不让搜索引擎收录” */
+export const isProductSeoNoIndex = (product: { seo_meta?: Record<string, unknown> | null } | null | undefined): boolean => {
+  const flag = product?.seo_meta?.noindex
+  return flag === true || flag === 'true' || flag === '1' || flag === 1
+}
+
+/**
+ * 分类列表页是否应 noindex：与服务端一致，分类下没有可收录商品（空分类，或只有 noindex 商品）时不让搜索引擎收录。
+ * 只在加载完成、无搜索词、只有一页时判断，避免加载中或翻页时误判。
+ */
+export const isEmptyCategoryListing = (opts: {
+  isCategoryRoute: boolean
+  loading: boolean
+  searchQuery: string
+  totalPages: number
+  products: Array<{ seo_meta?: Record<string, unknown> | null }>
+}): boolean => {
+  if (!opts.isCategoryRoute || opts.loading || opts.searchQuery.trim() || opts.totalPages > 1) return false
+  return opts.products.every((p) => isProductSeoNoIndex(p))
+}
+
 /** 备课箱主站生态互链 */
 export const BEIKE_ECOSYSTEM_LINKS = [
   {

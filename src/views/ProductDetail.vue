@@ -487,6 +487,7 @@ import {
   VERTICAL_HOME_KEYWORDS,
   buildBreadcrumbJsonLd,
   hasServerJsonLd,
+  isProductSeoNoIndex,
   resolveAbsoluteImageUrl,
   resolveShopBaseUrl,
 } from '../utils/seo'
@@ -1067,10 +1068,7 @@ const fullProductDescription = computed(() => {
   return getLocalizedText(product.value.description) || getLocalizedText(product.value.title)
 })
 
-const isSeoNoIndex = computed(() => {
-  const flag = (product.value?.seo_meta as Record<string, unknown> | undefined)?.noindex
-  return flag === true || flag === 'true' || flag === '1' || flag === 1
-})
+const isSeoNoIndex = computed(() => isProductSeoNoIndex(product.value))
 
 const absoluteOgImageUrl = computed(() => {
   const firstImage = images.value && images.value.length > 0 ? images.value[0] : ''

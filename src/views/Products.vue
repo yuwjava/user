@@ -110,9 +110,14 @@ import { usePageSeo } from '../composables/usePageSeo'
 import { useLocalized } from '../composables/useProduct'
 import { useAppStore } from '../stores/app'
 import {
+  PRODUCTS_CENTER_HEADING,
+  PRODUCTS_CENTER_TITLE,
   VERTICAL_PRODUCTS_DESCRIPTION,
   buildBreadcrumbJsonLd,
   buildCategoryDescription,
+  buildCategoryHeading,
+  buildCategoryTitle,
+  isEmptyCategoryListing,
   resolveShopBaseUrl,
 } from '../utils/seo'
 import ProductCard from '../components/ProductCard.vue'
@@ -155,9 +160,9 @@ const seoCategoryName = computed(() => {
 
 const pageHeading = computed(() => {
   if (seoCategoryName.value) {
-    return `${seoCategoryName.value}小学科学课件`
+    return buildCategoryHeading(seoCategoryName.value)
   }
-  return '小学科学全版本课件资源中心'
+  return PRODUCTS_CENTER_HEADING
 })
 
 const pageSubtitle = computed(() => {
@@ -171,11 +176,18 @@ usePageSeo({
   canonicalPath: () => route.path,
   title: () => {
     if (seoCategoryName.value) {
-      return `${seoCategoryName.value}小学科学课件｜按年级单元选课`
+      return buildCategoryTitle(seoCategoryName.value)
     }
-    return '小学科学全版本课件资源中心'
+    return PRODUCTS_CENTER_TITLE
   },
   description: () => pageSubtitle.value,
+  noindex: () => isEmptyCategoryListing({
+    isCategoryRoute: route.name === 'category-products',
+    loading: loading.value,
+    searchQuery: String(searchQuery.value || ''),
+    totalPages: totalPages.value,
+    products: products.value,
+  }),
   jsonLd: () => {
     const base = resolveShopBaseUrl(appStore.config?.brand?.site_url)
     const items = [
@@ -184,7 +196,7 @@ usePageSeo({
     ]
     if (seoCategoryName.value) {
       items.push({
-        name: `${seoCategoryName.value}小学科学课件`,
+        name: buildCategoryHeading(seoCategoryName.value),
         url: `${base}${route.path}`,
       })
     }

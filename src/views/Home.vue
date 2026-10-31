@@ -403,10 +403,15 @@ import { usePageSeo } from '../composables/usePageSeo'
 import { useAppStore } from '../stores/app'
 import {
   DEFAULT_OG_IMAGE_URL,
+  PRODUCTS_CENTER_HEADING,
+  PRODUCTS_CENTER_TITLE,
   VERTICAL_HOME_DESCRIPTION,
   VERTICAL_PRODUCTS_DESCRIPTION,
   buildBreadcrumbJsonLd,
   buildCategoryDescription,
+  buildCategoryHeading,
+  buildCategoryTitle,
+  isEmptyCategoryListing,
   resolveShopBaseUrl,
 } from '../utils/seo'
 import ProductCard from '../components/ProductCard.vue'
@@ -505,12 +510,19 @@ usePageSeo({
   title: () => {
     if (route.name === 'category-products') {
       return seoCategoryName.value
-        ? `${seoCategoryName.value}小学科学课件｜按年级单元选课`
-        : '小学科学全版本课件资源中心'
+        ? buildCategoryTitle(seoCategoryName.value)
+        : PRODUCTS_CENTER_TITLE
     }
-    if (route.name === 'products') return '小学科学全版本课件资源中心'
+    if (route.name === 'products') return PRODUCTS_CENTER_TITLE
     return undefined
   },
+  noindex: () => isEmptyCategoryListing({
+    isCategoryRoute: route.name === 'category-products',
+    loading: listLoading.value,
+    searchQuery: String(listSearchQuery.value || ''),
+    totalPages: listTotalPages.value,
+    products: listProducts.value,
+  }),
   description: () => {
     if (route.name === 'category-products' && seoCategoryName.value) {
       return buildCategoryDescription(seoCategoryName.value)
@@ -529,7 +541,7 @@ usePageSeo({
       ]
       if (seoCategoryName.value) {
         items.push({
-          name: `${seoCategoryName.value}小学科学课件`,
+          name: buildCategoryHeading(seoCategoryName.value),
           url: `${base}${route.path}`,
         })
       }
@@ -539,7 +551,7 @@ usePageSeo({
       return [
         buildBreadcrumbJsonLd([
           { name: '首页', url: `${base}/` },
-          { name: '小学科学全版本课件资源中心', url: `${base}/products` },
+          { name: PRODUCTS_CENTER_HEADING, url: `${base}/products` },
         ]),
       ]
     }
