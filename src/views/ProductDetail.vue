@@ -487,7 +487,6 @@ import {
   VERTICAL_HOME_KEYWORDS,
   buildBreadcrumbJsonLd,
   hasServerJsonLd,
-  buildStructuredProductDescription,
   resolveAbsoluteImageUrl,
   resolveShopBaseUrl,
 } from '../utils/seo'
@@ -1052,12 +1051,20 @@ const breadcrumbItems = computed(() => {
   return items
 })
 
+// 页面标题与描述直接用后端算好的 seo_title / seo_description（与服务端 HTML 同一套规则，见 dujiao-next product_seo_meta.go）；
+// 仅在接口未返回时退回商品名与短描述
+const fullProductTitle = computed(() => {
+  if (!product.value) return ''
+  const seoTitle = String(product.value.seo_title || '').trim()
+  if (seoTitle) return seoTitle
+  return `${getLocalizedText(product.value.title)}｜备课箱小学科学`
+})
+
 const fullProductDescription = computed(() => {
   if (!product.value) return ''
-  const seoMeta = product.value.seo_meta || {}
-  const rawSeoDesc = getLocalizedText(seoMeta.description) || (typeof seoMeta.description === 'string' ? seoMeta.description : '')
-  const title = getLocalizedText(product.value.title)
-  return buildStructuredProductDescription(rawSeoDesc, title, categoryName.value)
+  const seoDescription = String(product.value.seo_description || '').trim()
+  if (seoDescription) return seoDescription
+  return getLocalizedText(product.value.description) || getLocalizedText(product.value.title)
 })
 
 const isSeoNoIndex = computed(() => {
@@ -1071,11 +1078,7 @@ const absoluteOgImageUrl = computed(() => {
 })
 
 useHead({
-  title: () => {
-    if (!product.value) return ''
-    const title = getLocalizedText(product.value.title)
-    return `${title} - 备课箱`
-  },
+  title: () => fullProductTitle.value,
   link: () => {
     if (!canonicalUrl.value || isSeoNoIndex.value) return []
     return [{ rel: 'canonical', href: canonicalUrl.value }]
@@ -1094,8 +1097,8 @@ useHead({
     if (seoDescription) tags.push({ name: 'description', content: seoDescription })
 
     tags.push({ property: 'og:type', content: 'product' })
-    if (product.value.title) {
-      tags.push({ property: 'og:title', content: `${getLocalizedText(product.value.title)} - 备课箱` })
+    if (fullProductTitle.value) {
+      tags.push({ property: 'og:title', content: fullProductTitle.value })
     }
     if (seoDescription) {
       tags.push({ property: 'og:description', content: seoDescription })
@@ -1108,8 +1111,8 @@ useHead({
     }
 
     tags.push({ name: 'twitter:card', content: 'summary_large_image' })
-    if (product.value.title) {
-      tags.push({ name: 'twitter:title', content: `${getLocalizedText(product.value.title)} - 备课箱` })
+    if (fullProductTitle.value) {
+      tags.push({ name: 'twitter:title', content: fullProductTitle.value })
     }
     if (seoDescription) {
       tags.push({ name: 'twitter:description', content: seoDescription })

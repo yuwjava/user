@@ -99,27 +99,6 @@ export const containsLegacyBroadSubjectCopy = (text?: string | null): boolean =>
   return normalized.includes('小初高') || normalized.includes('全学科')
 }
 
-/**
- * 商品详情智能结构化描述兜底（与 Go 后端 BuildStructuredProductDescription 保持一致）：
- * 当 seo_meta.description 为空、长度 <= 15 字符或与商品标题相同时，自动合成四件套完整描述
- */
-export const buildStructuredProductDescription = (
-  rawSeoDescription?: string | null,
-  productTitle?: string | null,
-  categoryName?: string | null,
-): string => {
-  const trimmedSeo = String(rawSeoDescription || '').trim()
-  const trimmedTitle = String(productTitle || '').trim()
-  if (trimmedSeo && Array.from(trimmedSeo).length > 15 && trimmedSeo !== trimmedTitle) {
-    return trimmedSeo
-  }
-  const trimmedCat = String(categoryName || '').trim()
-  if (trimmedCat) {
-    return `${trimmedCat}《${trimmedTitle}》小学科学同步备课资源包，内含可编辑PPT课件、教学设计、课堂逐字稿与同步练习源文件，对齐2022版科学新课标，支持微信/支付宝免注册扫码购买、秒级自动发货。`
-  }
-  return `《${trimmedTitle}》小学科学同步备课资源包，内含可编辑PPT课件、教学设计、课堂逐字稿与同步练习源文件，对齐2022版科学新课标，支持微信/支付宝免注册扫码购买、秒级自动发货。`
-}
-
 /** 提取富文本 HTML 的纯文本内容，用于摘要去重与截断展示 */
 export const extractPlainTextFromHtml = (rawHtml?: string | null): string => {
   const input = String(rawHtml || '').trim()
