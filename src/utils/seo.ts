@@ -176,6 +176,28 @@ export interface BreadcrumbSchemaItem {
   url: string
 }
 
+/** 首屏加载时的路径：服务端注入的 JSON-LD 只对应这个路径（站内跳转后不再适用） */
+const SSR_INITIAL_PATH = typeof window !== 'undefined' ? window.location.pathname : ''
+
+/**
+ * 服务端（dujiao-next HTML 壳，带 data-ssr 标记）是否已在当前页输出了指定 @type 的 JSON-LD。
+ * 前台据此跳过同类型的重复注入；站内跳转到其他路径后返回 false，由前台照常注入。
+ */
+export const hasServerJsonLd = (schemaType: string): boolean => {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return false
+  if (window.location.pathname !== SSR_INITIAL_PATH) return false
+  const scripts = document.querySelectorAll('script[type="application/ld+json"][data-ssr]')
+  for (const el of Array.from(scripts)) {
+    try {
+      const data = JSON.parse(el.textContent || '')
+      if (data && data['@type'] === schemaType) return true
+    } catch {
+      // 忽略无法解析的结构化数据
+    }
+  }
+  return false
+}
+
 /** 构造标准 Schema.org BreadcrumbList JSON-LD */
 export const buildBreadcrumbJsonLd = (items: BreadcrumbSchemaItem[]): Record<string, unknown> => ({
   '@context': 'https://schema.org',

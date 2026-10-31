@@ -7,6 +7,7 @@ import {
   VERTICAL_HOME_TITLE,
   VERTICAL_SITE_SUFFIX,
   containsLegacyBroadSubjectCopy,
+  hasServerJsonLd,
   isGenericOrLegacyHomeTitle,
   resolveAbsoluteImageUrl,
   resolveShopBaseUrl,
@@ -152,6 +153,8 @@ export function usePageSeo(options: PageSeoOptions = {}) {
       const items = options.jsonLd?.() || []
       return items
         .filter((item) => item && typeof item === 'object')
+        // 服务端已输出同类型 JSON-LD 时跳过，避免重复
+        .filter((item) => !hasServerJsonLd(String(item['@type'] ?? '')))
         .map((item, idx) => ({
           key: `page-jsonld-${idx}`,
           type: 'application/ld+json',

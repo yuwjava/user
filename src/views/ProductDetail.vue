@@ -486,6 +486,7 @@ import { getImageUrl } from '../utils/image'
 import {
   VERTICAL_HOME_KEYWORDS,
   buildBreadcrumbJsonLd,
+  hasServerJsonLd,
   buildStructuredProductDescription,
   resolveAbsoluteImageUrl,
   resolveShopBaseUrl,
@@ -1059,6 +1060,11 @@ const fullProductDescription = computed(() => {
   return buildStructuredProductDescription(rawSeoDesc, title, categoryName.value)
 })
 
+const isSeoNoIndex = computed(() => {
+  const flag = (product.value?.seo_meta as Record<string, unknown> | undefined)?.noindex
+  return flag === true || flag === 'true' || flag === '1' || flag === 1
+})
+
 const absoluteOgImageUrl = computed(() => {
   const firstImage = images.value && images.value.length > 0 ? images.value[0] : ''
   return resolveAbsoluteImageUrl(firstImage, appStore.config?.brand?.site_url)
@@ -1071,7 +1077,7 @@ useHead({
     return `${title} - 备课箱`
   },
   link: () => {
-    if (!canonicalUrl.value) return []
+    if (!canonicalUrl.value || isSeoNoIndex.value) return []
     return [{ rel: 'canonical', href: canonicalUrl.value }]
   },
   meta: () => {
@@ -1080,6 +1086,9 @@ useHead({
     const seoKeywords = getLocalizedText(seoMeta.keywords) || (typeof seoMeta.keywords === 'string' ? seoMeta.keywords : '') || VERTICAL_HOME_KEYWORDS
     const seoDescription = fullProductDescription.value
     const tags = []
+
+    // 与服务端一致：后台标记 noindex 的商品不让搜索引擎收录
+    if (isSeoNoIndex.value) tags.push({ name: 'robots', content: 'noindex, nofollow' })
 
     if (seoKeywords) tags.push({ name: 'keywords', content: seoKeywords })
     if (seoDescription) tags.push({ name: 'description', content: seoDescription })
@@ -1170,16 +1179,13 @@ useHead({
 
     const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbs)
 
-    return [
-      {
+    // 服务端已输出同类型 JSON-LD 时跳过，避免同一页出现两份 Product / BreadcrumbList
+    return [productJsonLd, breadcrumbJsonLd]
+      .filter((item) => !hasServerJsonLd(String(item['@type'])))
+      .map((item) => ({
         type: 'application/ld+json',
-        innerHTML: JSON.stringify(productJsonLd),
-      },
-      {
-        type: 'application/ld+json',
-        innerHTML: JSON.stringify(breadcrumbJsonLd),
-      },
-    ]
+        innerHTML: JSON.stringify(item),
+      }))
   },
 })
 
