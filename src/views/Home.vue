@@ -404,7 +404,9 @@ import { useAppStore } from '../stores/app'
 import {
   DEFAULT_OG_IMAGE_URL,
   VERTICAL_HOME_DESCRIPTION,
+  VERTICAL_PRODUCTS_DESCRIPTION,
   buildBreadcrumbJsonLd,
+  buildCategoryDescription,
   resolveShopBaseUrl,
 } from '../utils/seo'
 import ProductCard from '../components/ProductCard.vue'
@@ -511,10 +513,10 @@ usePageSeo({
   },
   description: () => {
     if (route.name === 'category-products' && seoCategoryName.value) {
-      return `${seoCategoryName.value}小学科学同步备课资源专区，提供1-6年级上下册可编辑PPT课件、教学设计、课堂逐字稿与随堂练习源文件，付款秒级自动发货。`
+      return buildCategoryDescription(seoCategoryName.value)
     }
     if (route.name === 'products') {
-      return '浏览备课箱小学科学全版本同步备课资源，涵盖教科版、苏教版、粤教版、人教版、大象版1-6年级可编辑PPT课件、教学设计、课堂逐字稿与同步练习源文件。'
+      return VERTICAL_PRODUCTS_DESCRIPTION
     }
     return undefined
   },

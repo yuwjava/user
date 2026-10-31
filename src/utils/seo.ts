@@ -12,13 +12,24 @@ export const VERTICAL_HOME_TITLE = '备课箱商城｜小学科学课件_教学�
 /** 内页标题品牌后缀 */
 export const VERTICAL_SITE_SUFFIX = '备课箱'
 
+// 以下文案与 dujiao-next html_shell_service.go 逐字一致；对外口径只写已上架的版本与真实交付物
+// （人教版、大象版尚无商品；图片版课件不可编辑）
+
 /** 商城全局「小学科学」垂直定位兜底描述 */
 export const VERTICAL_HOME_DESCRIPTION =
-  '备课箱商城专注小学科学同步备课资料，覆盖教科版、苏教版、粤教版、人教版、大象版1-6年级可编辑PPT课件、教学设计、课堂逐字稿与同步练习，支持微信支付宝免注册自动发货。'
+  '备课箱商城专注小学科学同步备课资源：教科版、苏教版、粤教版单元课件（含PPT课件与教学设计）、知识手册与开学第一课起始课，扫码购买，自动发货。'
 
 /** 商城全局「小学科学」垂直定位兜底关键词 */
 export const VERTICAL_HOME_KEYWORDS =
-  '小学科学课件,小学科学教案,科学逐字稿,教科版科学课件,苏教版科学课件,粤教版科学课件,人教版科学课件,大象版科学课件,2022新课标科学,备课箱商城'
+  '小学科学课件,小学科学教案,科学逐字稿,教科版科学课件,苏教版科学课件,粤教版科学课件,2022新课标科学,备课箱商城'
+
+/** 商品中心描述 */
+export const VERTICAL_PRODUCTS_DESCRIPTION =
+  '浏览备课箱小学科学同步备课资源：教科版、苏教版、粤教版单元课件（含PPT课件与教学设计）、知识手册与开学第一课起始课。'
+
+/** 分类页描述：分类里也有“小工具”“PPT模板”这类非课件分类，只写对任何分类都成立的内容 */
+export const buildCategoryDescription = (categoryName: string): string =>
+  `备课箱商城「${categoryName}」分类：浏览该分类下全部在售的小学科学备课资源，扫码购买，自动发货。`
 
 /** 备课箱主站生态互链 */
 export const BEIKE_ECOSYSTEM_LINKS = [
