@@ -13,7 +13,9 @@
         :class="isSoldOut(product) ? 'bg-black/15' : 'bg-black/15 group-hover:bg-black/5'"
       ></div>
       <img v-if="displayImageSrc && !imageErrored" :src="displayImageSrc"
-        :alt="getLocalizedText(product.title)" width="640" height="480" loading="lazy" decoding="async"
+        :srcset="getResponsiveSrcset(displayImageSrc) || undefined" :sizes="PRODUCT_CARD_IMAGE_SIZES"
+        :alt="getLocalizedText(product.title)" width="640" height="480"
+        :loading="index < eagerCount ? 'eager' : 'lazy'" :fetchpriority="index < eagerCount ? 'high' : 'auto'" decoding="async"
         class="w-full h-full object-cover transform transition-transform duration-700 ease-out"
         :class="[
           isSoldOut(product) ? 'grayscale brightness-75' : 'group-hover:scale-105',
@@ -171,7 +173,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
-import { getFirstImageUrl, getImageUrl } from '../utils/image'
+import { PRODUCT_CARD_IMAGE_SIZES, getFirstImageUrl, getImageUrl, getResponsiveSrcset } from '../utils/image'
 import { useLocalized, useProductLabels } from '../composables/useProduct'
 
 const props = withDefaults(defineProps<{
@@ -179,10 +181,13 @@ const props = withDefaults(defineProps<{
   index?: number
   maxTags?: number
   animationStep?: number
+  /** 前几张卡片的图立即加载（首屏），其余懒加载 */
+  eagerCount?: number
 }>(), {
   index: 0,
   maxTags: 2,
   animationStep: 50,
+  eagerCount: 2,
 })
 
 defineEmits<{

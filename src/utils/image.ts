@@ -21,6 +21,24 @@ export function getImageUrl(path: string | undefined | null): string {
 }
 
 /**
+ * 上传图额外派生的 WebP 宽度档（文件名 <原图>.w{宽}.webp），
+ * 与 dujiao-next internal/service/webp_derivatives.go 的 responsiveWebPWidths 一致。
+ * 档位文件缺失时 nginx 回退到原图，不会裂图。
+ */
+export const RESPONSIVE_IMAGE_WIDTHS = [480, 960, 1440] as const
+
+/**
+ * 为 /uploads/ 下的 png/jpg 上传图生成 srcset；其他图片（svg、外链、已是 webp 等）返回空串，按原 src 加载
+ */
+export function getResponsiveSrcset(url: string | undefined | null): string {
+    if (!url || !/\/uploads\/[^?#]+\.(?:png|jpe?g)$/i.test(url)) return ''
+    return RESPONSIVE_IMAGE_WIDTHS.map((w) => `${url}.w${w}.webp ${w}w`).join(', ')
+}
+
+/** 商品列表卡片的 sizes：移动端 2 列，平板 3 列，桌面 4 列（旁边还有分类侧栏） */
+export const PRODUCT_CARD_IMAGE_SIZES = '(min-width: 1024px) 22vw, (min-width: 768px) 30vw, 50vw'
+
+/**
  * 从 images 数组中获取第一张图片的完整 URL
  */
 export function getFirstImageUrl(images: any): string {

@@ -4,6 +4,7 @@
       @touchstart="onImageTouchStart"
       @touchend="onImageTouchEnd">
       <img v-if="currentImage" :src="currentImage" :alt="productTitle"
+        :srcset="getResponsiveSrcset(currentImage) || undefined" sizes="(min-width: 768px) 50vw, 100vw"
         width="800" height="600" fetchpriority="high" decoding="async"
         class="w-full aspect-[4/3] object-cover rounded-xl border theme-border relative z-10 shadow-lg" />
       <div v-else
@@ -21,13 +22,16 @@
       <div v-for="(image, index) in images" :key="index" @click="$emit('update:currentImage', image)"
         class="cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-300 shrink-0 w-16 h-16 md:w-auto md:h-auto md:aspect-square snap-start"
         :class="currentImage === image ? 'theme-thumb-selected opacity-100' : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'">
-        <img :src="image" :alt="`${productTitle} 预览图 ${index + 1}`" width="80" height="80" loading="lazy" decoding="async" class="w-full h-full object-cover" />
+        <img :src="image" :srcset="getResponsiveSrcset(image) || undefined" sizes="(min-width: 768px) 120px, 64px"
+          :alt="`${productTitle} 预览图 ${index + 1}`" width="80" height="80" loading="lazy" decoding="async" class="w-full h-full object-cover" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { getResponsiveSrcset } from '../../utils/image'
+
 const props = defineProps<{
   images: string[]
   currentImage: string

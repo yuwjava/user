@@ -10,6 +10,7 @@
     <!-- Thumbnail -->
     <div class="w-11 h-11 sm:w-16 sm:h-16 flex-shrink-0 overflow-hidden relative rounded-lg m-1.5 sm:m-2.5">
       <img v-if="product.images && getFirstImageUrl(product.images)" :src="getFirstImageUrl(product.images)"
+        :srcset="getResponsiveSrcset(getFirstImageUrl(product.images)) || undefined" sizes="64px"
         :alt="getLocalizedText(product.title)" width="64" height="64" loading="lazy" decoding="async"
         class="w-full h-full object-cover transition-transform duration-500"
         :class="isSoldOut(product) ? 'grayscale brightness-75' : 'group-hover:scale-110'" />
@@ -125,7 +126,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { getFirstImageUrl, getImageUrl } from '../utils/image'
+import { getFirstImageUrl, getImageUrl, getResponsiveSrcset } from '../utils/image'
 import { useLocalized, useProductLabels } from '../composables/useProduct'
 
 withDefaults(defineProps<{
