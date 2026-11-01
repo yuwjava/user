@@ -325,6 +325,7 @@ import EmptyState from '../components/EmptyState.vue'
 import SmartImage from '../components/SmartImage.vue'
 import CheckoutSteps from '../components/checkout/CheckoutSteps.vue'
 import { useLocalized } from '../composables/useProduct'
+import { trackConversion } from '../utils/analytics'
 
 const router = useRouter()
 const route = useRoute()
@@ -1145,6 +1146,7 @@ const handleSubmit = async () => {
       throw new Error(t('checkout.errors.submitFailed'))
     }
 
+    trackConversion('下单')
     clearSourceStore()
 
     // Redirect to the existing Payment page which handles all payment display

@@ -518,6 +518,7 @@ import EmptyState from '../components/EmptyState.vue'
 import CheckoutSteps from '../components/checkout/CheckoutSteps.vue'
 import QRCode from 'qrcode'
 import { pageAlertClass, type PageAlert } from '../utils/alerts'
+import { trackPaidOnce } from '../utils/analytics'
 
 const route = useRoute()
 const router = useRouter()
@@ -1555,6 +1556,8 @@ const redirectToOrderDetail = () => {
   if (redirected.value || redirecting.value) return
   const resolvedOrderNo = String(order.value?.order_no || orderNoQuery.value || '').trim()
   if (!resolvedOrderNo) return
+  // 只有订单已支付才会跳转到订单详情；同一笔订单只计一次转化（#3）
+  trackPaidOnce(resolvedOrderNo)
 
   const target = isGuest.value
     ? { name: 'guest-order-detail', params: { order_no: resolvedOrderNo } }

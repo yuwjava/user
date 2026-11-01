@@ -1,8 +1,9 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
 import { useUserAuthStore } from '../stores/userAuth'
 import { useAppStore } from '../stores/app'
 import { useTelegramMiniAppStore } from '../stores/telegramMiniApp'
 import { captureAffiliateFromRoute } from '../utils/affiliate'
+import { trackPageview } from '../utils/analytics'
 
 type RouteComponentLoader = () => Promise<unknown>
 
@@ -324,6 +325,12 @@ router.beforeEach(async (to, _from, next) => {
     else {
         next()
     }
+})
+
+// 百度统计：首屏由 hm.js 自动上报，只在之后的站内跳转补报 PV（#3）
+router.afterEach((to, from) => {
+    if (from === START_LOCATION || to.path === from.path) return
+    trackPageview(to.fullPath)
 })
 
 // Update SEO on route change

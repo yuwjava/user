@@ -320,6 +320,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 import { useCartStore } from '../stores/cart'
 import { useBuyNowStore } from '../stores/buyNow'
+import { trackConversion } from '../utils/analytics'
 import { useUserAuthStore } from '../stores/userAuth'
 import { getFirstImageUrl, getImageUrl } from '../utils/image'
 import { normalizeSkuId, buildSkuDisplayText } from '../utils/sku'
@@ -622,6 +623,7 @@ const handleAddToCart = () => {
     paymentChannelIds: Array.isArray(props.product.payment_channel_ids) && props.product.payment_channel_ids.length > 0 ? props.product.payment_channel_ids : undefined,
     quantity: 1,
   }, quantity.value)
+  trackConversion('加购', '加入购物车')
   toast.success(t('toast.addedToCart'))
   close()
 }
@@ -670,6 +672,7 @@ const handleBuyNow = () => {
     quantity: quantity.value,
   })
   close()
+  trackConversion('加购', '立即购买')
   router.push('/checkout?mode=buynow')
 }
 
