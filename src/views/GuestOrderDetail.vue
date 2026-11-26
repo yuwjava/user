@@ -430,6 +430,8 @@
             </div>
           </div>
         </div>
+
+        <PostPurchaseGiftCard :visible="showPostPurchaseGiftCard" />
       </div>
     </div>
   </div>
@@ -449,6 +451,7 @@ import { copyText } from '../utils/clipboard'
 import { amountToCents, centsToAmount } from '../utils/money'
 import { buildSkuDisplayTextFromSnapshot } from '../utils/sku'
 import { getImageUrl } from '../utils/image'
+import PostPurchaseGiftCard from '../components/order/PostPurchaseGiftCard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -465,6 +468,15 @@ const auth = ref({
 const fulfillmentCopied = ref(false)
 const fulfillmentDownloading = ref(false)
 let fulfillmentCopiedTimer: ReturnType<typeof setTimeout> | null = null
+
+const PAID_GIFT_STATUSES = new Set(['paid', 'fulfilling', 'partially_delivered', 'delivered', 'completed'])
+const showPostPurchaseGiftCard = computed(() => {
+  if (!order.value) return false
+  if (PAID_GIFT_STATUSES.has(String(order.value.status || ''))) return true
+  if (order.value.fulfillment?.status === 'delivered') return true
+  if (Array.isArray(order.value.children) && order.value.children.some((c: any) => c?.fulfillment?.status === 'delivered')) return true
+  return false
+})
 
 const isFulfillmentTruncated = (fulfillment: any) => {
   return fulfillment?.payload_line_count > 100
