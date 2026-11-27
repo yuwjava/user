@@ -1,7 +1,9 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { productAPI, categoryAPI } from '../api'
+import { useAppStore } from '../stores/app'
 import { buildCategoryGroups, createCategoryMap, normalizeCategoryParentId, type PublicCategory } from '../utils/category'
+import { matchesCoursewareFilter, type GradeFilter, type TermFilter } from '../utils/courseware'
 import { debounceAsync } from '../utils/debounce'
 
 export interface UseProductListOptions {
@@ -19,17 +21,25 @@ export function useProductList(options: UseProductListOptions = {}) {
 
   const router = useRouter()
   const route = useRoute()
+  const appStore = useAppStore()
 
   const loading = ref(true)
   const products = ref<any[]>([])
   const categories = ref<PublicCategory[]>([])
   const selectedCategory = ref<number | null>(null)
+  const selectedGrade = ref<GradeFilter>('all')
+  const selectedTerm = ref<TermFilter>('all')
   const searchQuery = ref('')
   const currentPage = ref(1)
   const pageSize = ref(defaultPageSize)
   const totalPages = ref(0)
+  const filteredTotal = ref(0)
   const showFilterDrawer = ref(false)
   const expandedParentIds = ref<number[]>([])
+
+  const hasCoursewareFilter = computed(
+    () => selectedGrade.value !== 'all' || selectedTerm.value !== 'all',
+  )
 
   const categoryGroups = computed(() => buildCategoryGroups(categories.value))
   const categoryMap = computed(() => createCategoryMap(categories.value))
@@ -84,12 +94,26 @@ export function useProductList(options: UseProductListOptions = {}) {
     }
   }
 
+  const selectGrade = (grade: GradeFilter) => {
+    selectedGrade.value = selectedGrade.value === grade ? 'all' : grade
+  }
+
+  const selectTerm = (term: TermFilter) => {
+    selectedTerm.value = selectedTerm.value === term ? 'all' : term
+  }
+
+  const resetCoursewareFilters = () => {
+    selectedGrade.value = 'all'
+    selectedTerm.value = 'all'
+  }
+
   const loadProducts = async () => {
     loading.value = true
     try {
+      const filteringByMetadata = hasCoursewareFilter.value
       const params: any = {
-        page: currentPage.value,
-        page_size: pageSize.value,
+        page: filteringByMetadata ? 1 : currentPage.value,
+        page_size: filteringByMetadata ? 100 : pageSize.value,
       }
       if (selectedCategory.value) {
         params.category_id = selectedCategory.value
@@ -99,9 +123,27 @@ export function useProductList(options: UseProductListOptions = {}) {
         params.search = keyword
       }
       const response = await productAPI.list(params)
-      products.value = response.data.data || []
-      if (response.data.pagination) {
-        totalPages.value = response.data.pagination.total_page || 0
+      const rawItems: any[] = response.data.data || []
+
+      if (filteringByMetadata) {
+        const matched = rawItems.filter((item) =>
+          matchesCoursewareFilter(item, appStore.locale, selectedGrade.value, selectedTerm.value),
+        )
+        filteredTotal.value = matched.length
+        totalPages.value = matched.length > 0 ? Math.ceil(matched.length / pageSize.value) : 0
+        if (totalPages.value > 0 && currentPage.value > totalPages.value) {
+          currentPage.value = 1
+        }
+        const start = (currentPage.value - 1) * pageSize.value
+        products.value = matched.slice(start, start + pageSize.value)
+      } else {
+        products.value = rawItems
+        if (response.data.pagination) {
+          totalPages.value = response.data.pagination.total_page || 0
+          filteredTotal.value = response.data.pagination.total ?? rawItems.length
+        } else {
+          filteredTotal.value = rawItems.length
+        }
       }
     } catch (error) {
       console.error('Failed to load products:', error)
@@ -164,6 +206,8 @@ export function useProductList(options: UseProductListOptions = {}) {
   watch(selectedCategory, () => {
     if (initializing) return
     currentPage.value = 1
+    selectedGrade.value = 'all'
+    selectedTerm.value = 'all'
     syncExpandedCategoryState()
     debouncedLoadProducts()
 
@@ -175,6 +219,12 @@ export function useProductList(options: UseProductListOptions = {}) {
     } else if (route.name === categoryRouteName) {
       router.replace({ name: homeRouteName })
     }
+  })
+
+  watch([selectedGrade, selectedTerm], () => {
+    if (initializing) return
+    currentPage.value = 1
+    debouncedLoadProducts()
   })
 
   watch(searchQuery, () => {
@@ -210,6 +260,10 @@ export function useProductList(options: UseProductListOptions = {}) {
     products,
     categories,
     selectedCategory,
+    selectedGrade,
+    selectedTerm,
+    hasCoursewareFilter,
+    filteredTotal,
     searchQuery,
     currentPage,
     pageSize,
@@ -222,6 +276,9 @@ export function useProductList(options: UseProductListOptions = {}) {
     toggleParentCategory,
     getParentToggleButtonClass,
     selectCategory,
+    selectGrade,
+    selectTerm,
+    resetCoursewareFilters,
     loadProducts,
     loadCategories,
     changePage,

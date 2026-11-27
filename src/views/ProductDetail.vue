@@ -201,6 +201,13 @@
                   </ul>
                 </div>
 
+                <!-- 配套免费数字实验室入口（反向展示王牌优势） -->
+                <ProductLabCompanionCard
+                  :slug="product.slug"
+                  :category="product.category"
+                  :category-name="categoryName"
+                />
+
                 <div v-if="activeSkus.length" class="mb-8">
                   <h2 class="mb-3 text-sm font-bold uppercase tracking-widest theme-text-muted">
                     {{ t('productDetail.skuTitle') }}
@@ -210,8 +217,11 @@
                       v-for="sku in activeSkus"
                       :key="sku.id"
                       type="button"
+                      :data-sku-id="normalizeSkuId(sku.id)"
+                      :data-bundle-sku="skuBundleInfo(sku).isBundle ? 'true' : undefined"
                       class="flex min-h-[58px] items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm transition-all"
                       :class="[
+                        skuBundleInfo(sku).isBundle ? 'sm:col-span-2' : '',
                         normalizeSkuId(sku.id) === selectedSkuId ? 'theme-selected-surface ring-1 ring-primary/30' : 'theme-btn-secondary',
                         isSkuPurchasable(sku) ? 'hover:-translate-y-0.5' : 'cursor-not-allowed opacity-55 border-dashed',
                       ]"
@@ -239,11 +249,27 @@
                       </span>
                       <span class="min-w-0 flex-1">
                         <span class="block font-semibold leading-tight">{{ skuDisplayText(sku) }}</span>
-                        <span
-                          class="mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px]"
-                          :class="skuStockBadgeClass(sku)"
-                        >
-                          {{ skuStockText(sku) }}
+                        <span class="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span
+                            v-if="skuBundleInfo(sku).isBundle"
+                            data-bundle-recommended-badge
+                            class="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:border-amber-700/60 dark:bg-amber-950/50 dark:text-amber-200"
+                          >
+                            🔥 {{ t('productDetail.bundleRecommendedTag') }}
+                          </span>
+                          <span
+                            v-if="skuBundleInfo(sku).savings"
+                            data-bundle-savings-badge
+                            class="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-950/50 dark:text-emerald-300"
+                          >
+                            {{ t('productDetail.bundleSaveHint', { saved: skuBundleInfo(sku).savings }) }}
+                          </span>
+                          <span
+                            class="inline-flex rounded-full border px-2 py-0.5 text-[11px]"
+                            :class="skuStockBadgeClass(sku)"
+                          >
+                            {{ skuStockText(sku) }}
+                          </span>
                         </span>
                       </span>
                       <span class="ml-auto shrink-0 text-right">
@@ -340,6 +366,8 @@
                   </div>
                 </div>
 
+                <!-- 付款前犹豫客截留：折叠扫码领免费实验记录单 -->
+                <ProductLeadCaptureCard />
               </div>
             </div>
           </div>
@@ -500,9 +528,17 @@ import { debounceAsync } from '../utils/debounce'
 import { useHead } from '@unhead/vue'
 // centsToAmount used internally by composable
 import { buildSkuDisplayText, normalizeSkuId } from '../utils/sku'
+import {
+  computeBundleSavings,
+  formatSavedAmount,
+  isBundleSkuLabel,
+  sortSkusWithBundleFirst,
+} from '../utils/courseware'
 import { useLocalized, useProductLabels } from '../composables/useProduct'
 import { toast } from '../composables/useToast'
 import ProductImageGallery from '../components/product/ProductImageGallery.vue'
+import ProductLabCompanionCard from '../components/product/ProductLabCompanionCard.vue'
+import ProductLeadCaptureCard from '../components/product/ProductLeadCaptureCard.vue'
 import ProductMobileBar from '../components/product/ProductMobileBar.vue'
 import BreadcrumbNav from '../components/BreadcrumbNav.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -553,8 +589,31 @@ let observer: IntersectionObserver | null = null
 
 const activeSkus = computed(() => {
   const rows = Array.isArray(product.value?.skus) ? product.value.skus : []
-  return rows.filter((sku: any) => Boolean(sku?.is_active))
+  const enabled = rows.filter((sku: any) => Boolean(sku?.is_active))
+  return sortSkusWithBundleFirst(
+    enabled,
+    (sku: any) => skuDisplayText(sku),
+    (sku: any) => isSkuPurchasable(sku),
+  )
 })
+
+const skuBundleInfo = (sku: any) => {
+  const label = skuDisplayText(sku)
+  const isBundle = isBundleSkuLabel(label)
+  if (!isBundle) {
+    return { isBundle: false, savings: '' }
+  }
+  const info = computeBundleSavings(
+    sku,
+    activeSkus.value,
+    (s: any) => skuDisplayText(s),
+    (s: any) => Number(getSkuDisplayPrice(s)),
+  )
+  return {
+    isBundle: true,
+    savings: info ? formatSavedAmount(info.savedAmount) : '',
+  }
+}
 
 const selectedSku = computed(() => {
   if (selectedSkuId.value <= 0) return null

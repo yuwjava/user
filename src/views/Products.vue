@@ -25,7 +25,16 @@
         />
 
         <!-- Main Content - Products Grid -->
-        <main class="flex-1">
+        <main class="flex-1 min-w-0">
+          <ProductFilterBar
+            :selected-grade="selectedGrade"
+            :selected-term="selectedTerm"
+            :result-count="filteredTotal"
+            @select-grade="selectGrade"
+            @select-term="selectTerm"
+            @reset="resetCoursewareFilters"
+          />
+
           <!-- Loading Skeleton -->
           <div v-if="loading" class="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-3 lg:grid-cols-4">
             <div v-for="i in 6" :key="i"
@@ -76,13 +85,13 @@
             v-else
             variant="soft"
             size="lg"
-            :icon="(searchQuery || selectedCategory) ? 'search' : 'package'"
-            :title="(searchQuery || selectedCategory) ? t('products.emptyFiltered') : t('products.empty')"
+            :icon="(searchQuery || selectedCategory || hasCoursewareFilter) ? 'search' : 'package'"
+            :title="(searchQuery || selectedCategory || hasCoursewareFilter) ? t('products.emptyFiltered') : t('products.empty')"
           >
-            <template v-if="searchQuery || selectedCategory" #action>
+            <template v-if="searchQuery || selectedCategory || hasCoursewareFilter" #action>
               <button
                 class="theme-btn-inline-md border theme-btn-secondary font-semibold"
-                @click="clearSearch(); selectCategory(null)"
+                @click="clearSearch(); selectCategory(null); resetCoursewareFilters()"
               >
                 {{ t('products.clearFilters') }}
               </button>
@@ -122,6 +131,7 @@ import {
 } from '../utils/seo'
 import ProductCard from '../components/ProductCard.vue'
 import ProductQuickBuy from '../components/ProductQuickBuy.vue'
+import ProductFilterBar from '../components/ProductFilterBar.vue'
 import CategorySidebar from '../components/CategorySidebar.vue'
 import PaginationNav from '../components/PaginationNav.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -133,6 +143,10 @@ const {
   loading,
   products,
   selectedCategory,
+  selectedGrade,
+  selectedTerm,
+  hasCoursewareFilter,
+  filteredTotal,
   searchQuery,
   currentPage,
   totalPages,
@@ -141,6 +155,9 @@ const {
   categoryGroups,
   categoryMap,
   selectCategory,
+  selectGrade,
+  selectTerm,
+  resetCoursewareFilters,
   toggleParentCategory,
   changePage,
   clearSearch,

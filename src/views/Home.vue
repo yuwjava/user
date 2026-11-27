@@ -114,6 +114,15 @@
                 </button>
               </div>
 
+              <ProductFilterBar
+                :selected-grade="listSelectedGrade"
+                :selected-term="listSelectedTerm"
+                :result-count="listFilteredTotal"
+                @select-grade="listSelectGrade"
+                @select-term="listSelectTerm"
+                @reset="listResetCoursewareFilters"
+              />
+
               <!-- Loading Skeleton -->
               <div v-if="listLoading" class="space-y-6">
                 <div v-for="i in 3" :key="i">
@@ -417,6 +426,7 @@ import {
 import ProductCard from '../components/ProductCard.vue'
 import ProductListItem from '../components/ProductListItem.vue'
 import ProductQuickBuy from '../components/ProductQuickBuy.vue'
+import ProductFilterBar from '../components/ProductFilterBar.vue'
 import CategorySidebar from '../components/CategorySidebar.vue'
 import PaginationNav from '../components/PaginationNav.vue'
 import AnnouncementModal from '../components/AnnouncementModal.vue'
@@ -476,6 +486,9 @@ const {
   loading: listLoading,
   products: listProducts,
   selectedCategory: listSelectedCategory,
+  selectedGrade: listSelectedGrade,
+  selectedTerm: listSelectedTerm,
+  filteredTotal: listFilteredTotal,
   searchQuery: listSearchQuery,
   currentPage: listCurrentPage,
   totalPages: listTotalPages,
@@ -484,6 +497,9 @@ const {
   categoryGroups: listCategoryGroups,
   categoryMap: listCategoryMap,
   selectCategory: listSelectCategory,
+  selectGrade: listSelectGrade,
+  selectTerm: listSelectTerm,
+  resetCoursewareFilters: listResetCoursewareFilters,
   toggleParentCategory: listToggleParentCategory,
   changePage: listChangePage,
   clearSearch: listClearSearch,
